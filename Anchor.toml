@@ -1,0 +1,27 @@
+[workspace]
+types = "src/types/"
+
+[features]
+seeds = false
+skip-lint = false
+[programs.localnet]
+did_registry = "regUajGv87Pti6QRLeeRuQWrarQ1LmEyDXcAozko6Ax"
+
+[registry]
+url = "https://api.apr.dev"
+
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha --exit -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[[test.genesis]]
+address = "didso1Dpqpm4CsiCjzP766BGY89CAdD6ZBL68cRhFPc"
+program = "tests/fixtures/sol_did_2.0.0.so"
+
+[[test.validator.account]]
+address = "78CJ7rLRbMg1eLKudJqmQp1wzPu1NEo9qRJhMXQKoNe7"
+filename = "../fixtures/did-sol-idl-account.json"
