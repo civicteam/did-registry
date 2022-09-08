@@ -11,7 +11,7 @@ export const KEY_REGISTRY_SEED_PREFIX = "key_registry";
 export type Wallet = AnchorProvider["wallet"];
 
 // TODO use DidSolIdentifier instead
-export const toDid = (key: PublicKey, cluster?: ExtendedCluster) => `did:sol:${cluster + ':' || ''}${key.toBase58()}`;
+export const toDid = (key: PublicKey, cluster?: ExtendedCluster) => `did:sol:${cluster ? cluster + ':' : ''}${key.toBase58()}`;
 
 type DidAccount = {
     authority:PublicKey,
@@ -84,7 +84,6 @@ export class Registry {
     }
 
     async register(did: string):Promise<string> {
-        console.log("Registering DID: " + did);
         const account = await this.didToAccount(did);
 
         await this.init();
