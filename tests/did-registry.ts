@@ -1,12 +1,16 @@
 import * as anchor from "@project-serum/anchor";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { Program } from "@project-serum/anchor";
-import { Registry, toDid } from '../src'
+import { Registry, toDid } from "../src";
 import { DidRegistry } from "../target/types/did_registry";
 
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
-import {addKeyToDID, initializeDIDAccount} from "./util/did";
+import {
+  addEthAddressToDID,
+  addKeyToDID,
+  initializeDIDAccount,
+} from "./util/did";
 import { createTestContext, fund } from "./util/anchorUtils";
 
 chai.use(chaiAsPromised);
@@ -25,6 +29,8 @@ describe("did-registry", () => {
   let bump: number;
 
   const register = (did: string) => registry.register(did);
+  const registerEth = (did: string, ethAddress: string) =>
+    registry.registerDidForEthAddress(did, ethAddress);
   const remove = (did: string) => registry.remove(did);
 
   before(async () => {
@@ -119,5 +125,19 @@ describe("did-registry", () => {
     const shouldFail = remove(someDID);
 
     return expect(shouldFail).to.be.rejectedWith(/DIDNotRegistered/);
+  });
+
+  it("can register a DID against an eth key", async () => {
+    const did = toDid(provider.wallet.publicKey);
+    const ethAddress = "0x123067AeF81529C9f39b6f2e3C4B6B87dF7485e9";
+
+    await initializeDIDAccount(provider.wallet);
+    await addEthAddressToDID(provider.wallet, ethAddress);
+
+    await registerEth(did, ethAddress);
+
+    const registeredDids = await registry.listDIDsForEthAddress(ethAddress);
+
+    expect(registeredDids).to.include(did);
   });
 });

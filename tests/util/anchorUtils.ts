@@ -7,10 +7,12 @@ const envProvider = anchor.AnchorProvider.env();
 const envProgram = anchor.workspace.DidRegistry;
 
 if (!process.env.QUIET) {
-  const logListener = envProvider.connection.onLogs("all", (log) => console.log(log.logs));
+  const logListener = envProvider.connection.onLogs("all", (log) =>
+    console.log(log.logs)
+  );
 
-  after('Remove log listener', () => {
-      envProvider.connection.removeOnLogsListener(logListener);
+  after("Remove log listener", () => {
+    envProvider.connection.removeOnLogsListener(logListener);
   });
 }
 

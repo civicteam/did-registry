@@ -7,7 +7,7 @@ import {
 } from "@identity.com/sol-did-client";
 import { CLUSTER } from "./constants";
 import { Wallet } from "./anchorUtils";
-import {toDid} from "../../src";
+import { toDid } from "../../src";
 
 export const addKeyToDID = async (authority: Wallet, key: PublicKey) => {
   const did = DidSolIdentifier.create(authority.publicKey, CLUSTER);
@@ -22,11 +22,26 @@ export const addKeyToDID = async (authority: Wallet, key: PublicKey) => {
   await didSolService.addVerificationMethod(newKeyVerificationMethod).rpc(); //{ skipPreflight: true, commitment: 'finalized' });
 };
 
+export const addEthAddressToDID = async (
+  authority: Wallet,
+  ethAddress: string
+) => {
+  const did = DidSolIdentifier.create(authority.publicKey, CLUSTER);
+  const didSolService = await DidSolService.build(did, undefined, authority);
+  const newKeyVerificationMethod = {
+    flags: VerificationMethodFlags.CapabilityInvocation,
+    fragment: `eth_Address${Date.now()}`, // randomise fragment name, so that we can add multiple keys in multiple tests.
+    keyData: Buffer.from(ethAddress),
+    methodType: VerificationMethodType.EcdsaSecp256k1VerificationKey2019,
+  };
+
+  await didSolService.addVerificationMethod(newKeyVerificationMethod).rpc(); //{ skipPreflight: true, commitment: 'finalized' });
+};
+
 export const getDIDAccount = (authority: PublicKey): Promise<PublicKey> => {
   const did = DidSolIdentifier.create(authority, CLUSTER);
   return did.dataAccount().then(([account]) => account);
 };
-
 
 export const initializeDIDAccount = async (
   authority: Wallet

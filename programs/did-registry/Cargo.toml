@@ -16,5 +16,5 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.25.0"
+anchor-lang = { version = "0.25.0", features = ["init-if-needed"] }
 sol-did = { git = "https://github.com/identity-com/sol-did", rev = "b0a32154aa7d2d42666865a90356e9c50616dca2", features = ["no-entrypoint"] }
