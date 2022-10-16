@@ -1,6 +1,11 @@
 import os from "os";
 import { Registry } from "../../src";
-import { Connection, Keypair, Transaction } from "@solana/web3.js";
+import {
+  Connection,
+  Keypair,
+  Transaction,
+  clusterApiUrl,
+} from "@solana/web3.js";
 
 const secretKey = require(os.homedir() + "/.config/solana/id.json");
 const keypair = Keypair.fromSecretKey(Buffer.from(secretKey));
@@ -20,7 +25,7 @@ const toWallet = (keypair: Keypair) => ({
 export const registry = new Registry(
   toWallet(keypair),
   new Connection(
-    process.env.RPC_URL || "https://api.devnet.solana.com",
+    process.env.RPC_URL || clusterApiUrl("mainnet-beta"),
     "confirmed"
   )
 );

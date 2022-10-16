@@ -1,9 +1,10 @@
 import * as anchor from "@project-serum/anchor";
-import { Keypair, PublicKey } from "@solana/web3.js";
 import { Program } from "@project-serum/anchor";
-import { Registry, toDid } from "../src";
-import { DidRegistry } from "../target/types/did_registry";
+import { Keypair } from "@solana/web3.js";
+import { Wallet as EthWallet } from "@ethersproject/wallet";
+import { EthRegistry, ReadOnlyRegistry, Registry, toDid } from "../src";
 
+import { DidRegistry } from "../target/types/did_registry";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import {
@@ -21,33 +22,46 @@ describe("did-registry", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
+  const ethWallet = EthWallet.createRandom();
+
   const program = anchor.workspace.DidRegistry as Program<DidRegistry>;
 
-  const registry = new Registry(provider.wallet, program.provider.connection);
+  const registry = Registry.for(provider.wallet, program.provider.connection);
+  const ethRegistry = EthRegistry.forEthAddress(
+    ethWallet.address,
+    provider.wallet,
+    program.provider.connection
+  );
 
-  let registryKey: PublicKey;
-  let bump: number;
+  it("finds no DIDs registered by default for a Sol key", async () => {
+    expect(
+      await ReadOnlyRegistry.for(
+        provider.wallet.publicKey,
+        program.provider.connection
+      ).listDIDs()
+    ).to.be.empty;
+  });
 
-  const register = (did: string) => registry.register(did);
-  const registerEth = (did: string, ethAddress: string) =>
-    registry.registerDidForEthAddress(did, ethAddress);
-  const remove = (did: string) => registry.remove(did);
-
-  before(async () => {
-    [registryKey, bump] = await registry.getRegistryAddressAndBump();
+  it("finds no DIDs registered by default for an ethereum key", async () => {
+    expect(
+      await ReadOnlyRegistry.forEthAddress(
+        ethWallet.address,
+        program.provider.connection
+      ).listDIDs()
+    ).to.be.empty;
   });
 
   it("fails to register a DID if the key is not an authority", async () => {
     const someOtherDid = toDid(Keypair.generate().publicKey);
 
-    const shouldFail = register(someOtherDid);
+    const shouldFail = registry.register(someOtherDid);
 
     return expect(shouldFail).to.be.rejectedWith(/NotAuthority/);
   });
 
   it("can register a generative DID", async () => {
     const did = toDid(provider.wallet.publicKey);
-    await register(did);
+    await registry.register(did);
 
     const registeredDids = await registry.listDIDs();
 
@@ -60,7 +74,7 @@ describe("did-registry", () => {
 
     const secondAuthorityDid = await initializeDIDAccount(secondAuthority);
 
-    const shouldFail = register(secondAuthorityDid);
+    const shouldFail = registry.register(secondAuthorityDid);
 
     return expect(shouldFail).to.be.rejectedWith(/NotAuthority/);
   });
@@ -74,7 +88,7 @@ describe("did-registry", () => {
     // adding the key as an authority means that the key can now register the secondAuthorityDID in its registry
     await addKeyToDID(secondAuthority, program.provider.publicKey);
 
-    await register(secondAuthorityDid);
+    await registry.register(secondAuthorityDid);
 
     const registeredDids = await registry.listDIDs();
 
@@ -91,9 +105,9 @@ describe("did-registry", () => {
     await addKeyToDID(secondAuthority, program.provider.publicKey);
 
     // works the first time
-    await register(secondAuthorityDid);
+    await registry.register(secondAuthorityDid);
     // fails the second time
-    const shouldFail = register(secondAuthorityDid);
+    const shouldFail = registry.register(secondAuthorityDid);
 
     return expect(shouldFail).to.be.rejectedWith(/DIDRegistered/);
   });
@@ -104,14 +118,14 @@ describe("did-registry", () => {
     const secondAuthorityDid = await initializeDIDAccount(secondAuthority);
     await addKeyToDID(secondAuthority, program.provider.publicKey);
 
-    await register(secondAuthorityDid);
+    await registry.register(secondAuthorityDid);
 
     // the did is registered
     let registeredDids = await registry.listDIDs();
 
     expect(registeredDids).to.include(secondAuthorityDid);
 
-    await remove(secondAuthorityDid);
+    await registry.remove(secondAuthorityDid);
 
     // the did is no longer registered
     registeredDids = await registry.listDIDs();
@@ -122,21 +136,37 @@ describe("did-registry", () => {
   it("cannot remove a DID that was not registered", async () => {
     const someDID = toDid(Keypair.generate().publicKey);
 
-    const shouldFail = remove(someDID);
+    const shouldFail = registry.remove(someDID);
 
     return expect(shouldFail).to.be.rejectedWith(/DIDNotRegistered/);
   });
 
   it("can register a DID against an eth key", async () => {
     const did = toDid(provider.wallet.publicKey);
-    const ethAddress = "0x123067AeF81529C9f39b6f2e3C4B6B87dF7485e9";
 
     await initializeDIDAccount(provider.wallet);
-    await addEthAddressToDID(provider.wallet, ethAddress);
+    await addEthAddressToDID(provider.wallet, ethWallet.address);
 
-    await registerEth(did, ethAddress);
+    await ethRegistry.register(did);
 
-    const registeredDids = await registry.listDIDsForEthAddress(ethAddress);
+    const registeredDids = await ethRegistry.listDIDs();
+
+    expect(registeredDids).to.include(did);
+  });
+
+  it("can register a DID, signed with an eth key", async () => {
+    const { authority: secondAuthority } = createTestContext();
+    await fund(secondAuthority.publicKey);
+    const did = toDid(secondAuthority.publicKey);
+
+    await initializeDIDAccount(secondAuthority);
+    await addEthAddressToDID(secondAuthority, ethWallet.address);
+
+    // note, the ethRegistry is using a separate wallet (not secondAuthority) to pay for the transaction
+    // the only authority needed on the DID is the ethWallet
+    await ethRegistry.registerSigned(did, ethWallet);
+
+    const registeredDids = await ethRegistry.listDIDs();
 
     expect(registeredDids).to.include(did);
   });

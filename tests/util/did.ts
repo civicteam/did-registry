@@ -8,6 +8,7 @@ import {
 import { CLUSTER } from "./constants";
 import { Wallet } from "./anchorUtils";
 import { toDid } from "../../src";
+import { arrayify } from "@ethersproject/bytes";
 
 export const addKeyToDID = async (authority: Wallet, key: PublicKey) => {
   const did = DidSolIdentifier.create(authority.publicKey, CLUSTER);
@@ -28,14 +29,18 @@ export const addEthAddressToDID = async (
 ) => {
   const did = DidSolIdentifier.create(authority.publicKey, CLUSTER);
   const didSolService = await DidSolService.build(did, undefined, authority);
+  const ethArray = arrayify(ethAddress);
   const newKeyVerificationMethod = {
     flags: VerificationMethodFlags.CapabilityInvocation,
     fragment: `eth_Address${Date.now()}`, // randomise fragment name, so that we can add multiple keys in multiple tests.
-    keyData: Buffer.from(ethAddress),
-    methodType: VerificationMethodType.EcdsaSecp256k1VerificationKey2019,
+    keyData: Buffer.from(ethArray),
+    methodType: VerificationMethodType.EcdsaSecp256k1RecoveryMethod2020,
   };
 
   await didSolService.addVerificationMethod(newKeyVerificationMethod).rpc(); //{ skipPreflight: true, commitment: 'finalized' });
+
+  const doc = await didSolService.resolve();
+  console.log(doc);
 };
 
 export const getDIDAccount = (authority: PublicKey): Promise<PublicKey> => {
