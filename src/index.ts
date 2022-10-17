@@ -1,11 +1,9 @@
 import {
-  ConfirmOptions,
   PublicKey,
-  TransactionInstruction,
 } from "@solana/web3.js";
 import { AnchorProvider, Program } from "@project-serum/anchor";
 import { Connection } from "@solana/web3.js";
-import { verifyMessage, Wallet as EthWallet } from "@ethersproject/wallet";
+import { Wallet as EthWallet } from "@ethersproject/wallet";
 import { DidRegistry, IDL } from "./types/did_registry";
 import {
   DidSolIdentifier,
@@ -23,10 +21,6 @@ export const ETH_KEY_REGISTRY_SEED_PREFIX = "eth_key_registry";
 // The exported Anchor wallet type is messed up at the moment, so we define it indirectly here
 export type Wallet = AnchorProvider["wallet"];
 
-// TODO use DidSolIdentifier instead
-export const toDid = (key: PublicKey, cluster?: ExtendedCluster) =>
-  `did:sol:${cluster ? cluster + ":" : ""}${key.toBase58()}`;
-
 type DidAccount = {
   authority: PublicKey;
   account: PublicKey;
@@ -35,14 +29,20 @@ type DidAccount = {
 
 export abstract class ARegistry {
   protected program: Program<DidRegistry>;
+  protected cluster: ExtendedCluster;
   protected address: Uint8Array;
   protected seedPrefix: string;
   protected registryAddress: PublicKey;
   protected registryBump: number;
 
-  protected constructor(address: Uint8Array, seedPrefix: string) {
+  protected constructor(
+    address: Uint8Array,
+    seedPrefix: string,
+    cluster: ExtendedCluster
+  ) {
     this.address = address;
     this.seedPrefix = seedPrefix;
+    this.cluster = cluster;
     [this.registryAddress, this.registryBump] =
       this.getRegistryAddressAndBump();
   }
@@ -72,7 +72,9 @@ export abstract class ARegistry {
 
     if (!registryAccount) return [];
 
-    return registryAccount.dids.map((did) => "did:sol:" + did.toBase58());
+    return registryAccount.dids.map((identifier: PublicKey) =>
+      DidSolIdentifier.create(identifier, this.cluster).toString()
+    );
   }
 }
 
@@ -80,9 +82,10 @@ export class ReadOnlyRegistry extends ARegistry {
   private constructor(
     connection: Connection,
     address: Uint8Array,
-    seedPrefix: string
+    seedPrefix: string,
+    cluster: ExtendedCluster
   ) {
-    super(address, seedPrefix);
+    super(address, seedPrefix, cluster);
     const dummyAuthority = {
       publicKey: new PublicKey("11111111111111111111111111111111"),
       signTransaction: async () => {
@@ -101,20 +104,30 @@ export class ReadOnlyRegistry extends ARegistry {
     );
   }
 
-  static for(publicKey: PublicKey, connection: Connection) {
+  static for(
+    publicKey: PublicKey,
+    connection: Connection,
+    cluster: ExtendedCluster = "mainnet-beta"
+  ) {
     return new ReadOnlyRegistry(
       connection,
       publicKey.toBuffer(),
-      KEY_REGISTRY_SEED_PREFIX
+      KEY_REGISTRY_SEED_PREFIX,
+      cluster
     );
   }
 
-  static forEthAddress(ethAddress: string, connection: Connection) {
+  static forEthAddress(
+    ethAddress: string,
+    connection: Connection,
+    cluster: ExtendedCluster = "mainnet-beta"
+  ) {
     const trimmedEthAddress = ethAddress.substring(2); // without 0x
     return new ReadOnlyRegistry(
       connection,
       Buffer.from(trimmedEthAddress, "hex"),
-      ETH_KEY_REGISTRY_SEED_PREFIX
+      ETH_KEY_REGISTRY_SEED_PREFIX,
+      cluster
     );
   }
 }
@@ -124,9 +137,10 @@ export class Registry extends ARegistry {
     protected wallet: Wallet,
     connection: Connection,
     address: Uint8Array,
-    seedPrefix: string
+    seedPrefix: string,
+    cluster: ExtendedCluster
   ) {
-    super(address, seedPrefix);
+    super(address, seedPrefix, cluster);
     this.program = new Program<DidRegistry>(
       IDL,
       DID_REGISTRY_PROGRAM_ID,
@@ -195,12 +209,17 @@ export class Registry extends ARegistry {
     return this.removePubkey(account.authority);
   }
 
-  static for(wallet: Wallet, connection: Connection) {
+  static for(
+    wallet: Wallet,
+    connection: Connection,
+    cluster: ExtendedCluster = "mainnet-beta"
+  ) {
     return new Registry(
       wallet,
       connection,
       wallet.publicKey.toBuffer(),
-      KEY_REGISTRY_SEED_PREFIX
+      KEY_REGISTRY_SEED_PREFIX,
+      cluster
     );
   }
 }
@@ -209,14 +228,16 @@ export class EthRegistry extends Registry {
   static forEthAddress(
     ethAddress: string,
     wallet: Wallet,
-    connection: Connection
+    connection: Connection,
+    cluster: ExtendedCluster = "mainnet-beta"
   ) {
     const trimmedEthAddress = ethAddress.substring(2); // without 0x
     return new EthRegistry(
       wallet,
       connection,
       Buffer.from(trimmedEthAddress, "hex"),
-      ETH_KEY_REGISTRY_SEED_PREFIX
+      ETH_KEY_REGISTRY_SEED_PREFIX,
+      cluster
     );
   }
 
