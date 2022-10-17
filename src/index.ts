@@ -110,9 +110,10 @@ export class ReadOnlyRegistry extends ARegistry {
   }
 
   static forEthAddress(ethAddress: string, connection: Connection) {
+    const trimmedEthAddress = ethAddress.substring(2); // without 0x
     return new ReadOnlyRegistry(
       connection,
-      Buffer.from(ethAddress, "hex"),
+      Buffer.from(trimmedEthAddress, "hex"),
       ETH_KEY_REGISTRY_SEED_PREFIX
     );
   }

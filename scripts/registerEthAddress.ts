@@ -1,15 +1,15 @@
-import { registry } from "./util/solana";
+import { ethRegistry } from "./util/solana";
 
 (async () => {
   const ethAddress = process.argv[2];
 
-  const dids = await registry.listDIDsForEthAddress(ethAddress);
+  const dids = await ethRegistry(ethAddress).listDIDs();
   console.log("Registered DIDs:", dids);
 
   if (process.argv.length > 3) {
     const didToRegister = process.argv[3];
 
-    await registry.registerDidForEthAddress(didToRegister, ethAddress);
+    await ethRegistry(ethAddress).register(didToRegister);
     console.log("Registered DID: " + didToRegister);
   }
 })().catch(console.error);

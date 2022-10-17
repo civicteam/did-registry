@@ -1,5 +1,5 @@
 import os from "os";
-import { Registry } from "../../src";
+import { EthRegistry, Registry } from "../../src";
 import {
   Connection,
   Keypair,
@@ -22,10 +22,12 @@ const toWallet = (keypair: Keypair) => ({
   },
 });
 
-export const registry = new Registry(
-  toWallet(keypair),
-  new Connection(
-    process.env.RPC_URL || clusterApiUrl("mainnet-beta"),
-    "confirmed"
-  )
-);
+export const ethRegistry = (address: string) =>
+  EthRegistry.forEthAddress(
+    address,
+    toWallet(keypair),
+    new Connection(
+      process.env.RPC_URL || clusterApiUrl("mainnet-beta"),
+      "confirmed"
+    )
+  );
