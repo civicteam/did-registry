@@ -1,11 +1,18 @@
-import { ConfirmOptions, PublicKey } from "@solana/web3.js";
+import {
+  ConfirmOptions,
+  PublicKey,
+  TransactionInstruction,
+} from "@solana/web3.js";
 import { AnchorProvider, Program } from "@project-serum/anchor";
 import { Connection } from "@solana/web3.js";
+import { verifyMessage, Wallet as EthWallet } from "@ethersproject/wallet";
 import { DidRegistry, IDL } from "./types/did_registry";
 import {
   DidSolIdentifier,
   ExtendedCluster,
 } from "@identity.com/sol-did-client";
+import { arrayify } from "@ethersproject/bytes";
+import BN from "bn.js";
 
 export const DID_REGISTRY_PROGRAM_ID = new PublicKey(
   "regUajGv87Pti6QRLeeRuQWrarQ1LmEyDXcAozko6Ax"
@@ -26,18 +33,66 @@ type DidAccount = {
   bump: number;
 };
 
-export class Registry {
-  private program: Program<DidRegistry>;
-  private authorityKey: PublicKey;
+export abstract class ARegistry {
+  protected program: Program<DidRegistry>;
+  protected address: Uint8Array;
+  protected seedPrefix: string;
+  protected registryAddress: PublicKey;
+  protected registryBump: number;
 
-  constructor(
-    authority: Wallet,
+  protected constructor(address: Uint8Array, seedPrefix: string) {
+    this.address = address;
+    this.seedPrefix = seedPrefix;
+    [this.registryAddress, this.registryBump] =
+      this.getRegistryAddressAndBump();
+  }
+
+  protected async didToAccount(did: string): Promise<DidAccount> {
+    const didSolIdentifier = DidSolIdentifier.parse(did);
+    const [didAccount, didBump] = await didSolIdentifier.dataAccount();
+    return {
+      authority: didSolIdentifier.authority,
+      account: didAccount,
+      bump: didBump,
+    };
+  }
+
+  public getRegistryAddressAndBump(): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from(this.seedPrefix), this.address],
+      DID_REGISTRY_PROGRAM_ID
+    );
+  }
+
+  async listDIDs(): Promise<string[]> {
+    const registryAccount =
+      await this.program.account.keyRegistry.fetchNullable(
+        this.registryAddress
+      );
+
+    if (!registryAccount) return [];
+
+    return registryAccount.dids.map((did) => "did:sol:" + did.toBase58());
+  }
+}
+
+export class ReadOnlyRegistry extends ARegistry {
+  private constructor(
     connection: Connection,
-    opts: ConfirmOptions = {}
+    address: Uint8Array,
+    seedPrefix: string
   ) {
-    const anchorProvider = new AnchorProvider(connection, authority, opts);
-
-    this.authorityKey = authority.publicKey;
+    super(address, seedPrefix);
+    const dummyAuthority = {
+      publicKey: new PublicKey("11111111111111111111111111111111"),
+      signTransaction: async () => {
+        throw new Error("Not implemented");
+      },
+      signAllTransactions: async () => {
+        throw new Error("Not implemented");
+      },
+    };
+    const anchorProvider = new AnchorProvider(connection, dummyAuthority, {});
 
     this.program = new Program<DidRegistry>(
       IDL,
@@ -46,30 +101,36 @@ export class Registry {
     );
   }
 
-  public getRegistryAddressAndBump(): Promise<[PublicKey, number]> {
-    return PublicKey.findProgramAddress(
-      [Buffer.from(KEY_REGISTRY_SEED_PREFIX), this.authorityKey.toBuffer()],
-      DID_REGISTRY_PROGRAM_ID
+  static for(publicKey: PublicKey, connection: Connection) {
+    return new ReadOnlyRegistry(
+      connection,
+      publicKey.toBuffer(),
+      KEY_REGISTRY_SEED_PREFIX
     );
   }
 
-  public getRegistryEthAddressAndBump(
-    ethAddress: Buffer
-  ): Promise<[PublicKey, number]> {
-    return PublicKey.findProgramAddress(
-      [Buffer.from(ETH_KEY_REGISTRY_SEED_PREFIX), ethAddress],
-      DID_REGISTRY_PROGRAM_ID
+  static forEthAddress(ethAddress: string, connection: Connection) {
+    return new ReadOnlyRegistry(
+      connection,
+      Buffer.from(ethAddress, "hex"),
+      ETH_KEY_REGISTRY_SEED_PREFIX
     );
   }
+}
 
-  private async didToAccount(did: string): Promise<DidAccount> {
-    const didSolIdentifier = DidSolIdentifier.parse(did);
-    const [didAccount, didBump] = await didSolIdentifier.dataAccount();
-    return {
-      authority: didSolIdentifier.authority,
-      account: didAccount,
-      bump: didBump,
-    };
+export class Registry extends ARegistry {
+  protected constructor(
+    protected wallet: Wallet,
+    connection: Connection,
+    address: Uint8Array,
+    seedPrefix: string
+  ) {
+    super(address, seedPrefix);
+    this.program = new Program<DidRegistry>(
+      IDL,
+      DID_REGISTRY_PROGRAM_ID,
+      new AnchorProvider(connection, wallet, {})
+    );
   }
 
   private async confirm(txSig: string): Promise<void> {
@@ -84,63 +145,33 @@ export class Registry {
     );
   }
 
-  private async init(): Promise<void> {
-    const [registry, bump] = await this.getRegistryAddressAndBump();
-
+  protected async init(): Promise<void> {
     const registryAccount =
-      await this.program.account.keyRegistry.fetchNullable(registry);
+      await this.program.account.keyRegistry.fetchNullable(
+        this.registryAddress
+      );
 
     if (!registryAccount) {
       await this.program.methods
-        .createKeyRegistry(bump)
+        .createKeyRegistry(this.registryBump)
         .accounts({
-          registry,
-          authority: this.authorityKey,
+          registry: this.registryAddress,
+          authority: this.wallet.publicKey,
         })
         .rpc()
         .then((txSig) => this.confirm(txSig));
     }
   }
 
-  async registerPubkey(didPubkey: PublicKey): Promise<string> {
-    return this.register("did:sol:" + didPubkey.toBase58());
-  }
-
   async register(did: string): Promise<string> {
     const account = await this.didToAccount(did);
 
     await this.init();
-    const [registry] = await this.getRegistryAddressAndBump();
     return this.program.methods
       .registerDid(account.bump)
       .accounts({
-        registry,
-        authority: this.authorityKey,
-        did: account.authority,
-        didAccount: account.account,
-      })
-      .rpc();
-  }
-
-  async registerDidForEthAddress(did: string, ethAddress: string) {
-    const ethAddressBuffer = Buffer.from(ethAddress.substring(2), "hex"); // Trim the 0x prefix
-    const account = await this.didToAccount(did);
-
-    const [registry] = await this.getRegistryEthAddressAndBump(
-      ethAddressBuffer
-    );
-
-    console.log(
-      "Registering DID for ETH address",
-      did,
-      ethAddress,
-      registry.toBase58()
-    );
-    return this.program.methods
-      .registerDidForEthAddress(Array.from(ethAddressBuffer), account.bump)
-      .accounts({
-        registry,
-        authority: this.authorityKey,
+        registry: this.registryAddress,
+        authority: this.wallet.publicKey,
         did: account.authority,
         didAccount: account.account,
       })
@@ -148,13 +179,11 @@ export class Registry {
   }
 
   async removePubkey(did: PublicKey): Promise<string> {
-    const [registry] = await this.getRegistryAddressAndBump();
-
     return this.program.methods
       .removeDid()
       .accounts({
-        registry,
-        authority: this.authorityKey,
+        registry: this.registryAddress,
+        authority: this.wallet.publicKey,
         did,
       })
       .rpc();
@@ -165,26 +194,92 @@ export class Registry {
     return this.removePubkey(account.authority);
   }
 
-  async listDIDs(): Promise<string[]> {
-    const [registry] = await this.getRegistryAddressAndBump();
-    const registryAccount =
-      await this.program.account.keyRegistry.fetchNullable(registry);
+  static for(wallet: Wallet, connection: Connection) {
+    return new Registry(
+      wallet,
+      connection,
+      wallet.publicKey.toBuffer(),
+      KEY_REGISTRY_SEED_PREFIX
+    );
+  }
+}
 
-    if (!registryAccount) return [];
-
-    return registryAccount.dids.map((did) => "did:sol:" + did.toBase58());
+export class EthRegistry extends Registry {
+  static forEthAddress(
+    ethAddress: string,
+    wallet: Wallet,
+    connection: Connection
+  ) {
+    const trimmedEthAddress = ethAddress.substring(2); // without 0x
+    return new EthRegistry(
+      wallet,
+      connection,
+      Buffer.from(trimmedEthAddress, "hex"),
+      ETH_KEY_REGISTRY_SEED_PREFIX
+    );
   }
 
-  async listDIDsForEthAddress(ethAddress: string): Promise<string[]> {
-    const ethAddressBuffer = Buffer.from(ethAddress.substring(2), "hex"); // Trim the 0x prefix
-    const [registry] = await this.getRegistryEthAddressAndBump(
-      ethAddressBuffer
+  async register(did: string) {
+    const account = await this.didToAccount(did);
+
+    return this.program.methods
+      .registerDidForEthAddress(Array.from(this.address), account.bump)
+      .accounts({
+        registry: this.registryAddress,
+        authority: this.wallet.publicKey,
+        did: account.authority,
+        didAccount: account.account,
+      })
+      .rpc();
+  }
+
+  private async ethSignMessage(
+    message: Buffer,
+    signer: EthWallet
+  ): Promise<{ signature: number[]; recoveryId: number }> {
+    // We do not use a dynamic nonce here - there is no risk of replay when adding a DID to a registry
+    const staticNonce = new BN(0).toBuffer("le", 8);
+    const messageToSign = Buffer.concat([message, staticNonce]);
+    const signatureFull = await signer.signMessage(messageToSign);
+
+    const signatureBytes = arrayify(signatureFull);
+    const signature = Array.from(signatureBytes.slice(0, -1));
+    // // map [0x1b, 0x1c] to [0, 1]
+    // https://docs.ethers.io/v4/api-utils.html#signatures
+    const recoveryId = signatureBytes.at(-1) - 27;
+
+    return {
+      signature,
+      recoveryId,
+    };
+  }
+
+  async registerSigned(did: string, ethWallet: EthWallet) {
+    const account = await this.didToAccount(did);
+    const signature = await this.ethSignMessage(
+      account.authority.toBuffer(),
+      ethWallet
     );
-    const registryAccount =
-      await this.program.account.keyRegistry.fetchNullable(registry);
 
-    if (!registryAccount) return [];
+    console.log({
+      registry: this.registryAddress.toBase58(),
+      authority: this.wallet.publicKey.toBase58(),
+      did: account.authority.toBase58(),
+      didAccount: account.account.toBase58(),
+      signature,
+    });
 
-    return registryAccount.dids.map((did) => "did:sol:" + did.toBase58());
+    return this.program.methods
+      .registerDidSignedByEthAddress(
+        Array.from(this.address),
+        signature,
+        account.bump
+      )
+      .accounts({
+        registry: this.registryAddress,
+        did: account.authority,
+        didAccount: account.account,
+      })
+      .rpc();
   }
 }

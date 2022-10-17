@@ -1,5 +1,22 @@
+mod eth_signing;
+
 use anchor_lang::prelude::*;
+use sol_did::state::{DidAccount, Secp256k1RawSignature as SolDidSecp256k1RawSignature};
 use std::str::FromStr;
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct Secp256k1RawSignature {
+    pub signature: [u8; 64],
+    pub recovery_id: u8,
+}
+impl From<Secp256k1RawSignature> for SolDidSecp256k1RawSignature {
+    fn from(signature: Secp256k1RawSignature) -> Self {
+        SolDidSecp256k1RawSignature {
+            signature: signature.signature,
+            recovery_id: signature.recovery_id,
+        }
+    }
+}
 
 declare_id!("regUajGv87Pti6QRLeeRuQWrarQ1LmEyDXcAozko6Ax");
 
@@ -17,21 +34,25 @@ impl Id for SolDID {
 #[program]
 pub mod did_registry {
     use super::*;
+    use crate::eth_signing::validate_eth_signature;
+    use sol_did::integrations::is_authority;
 
+    /// Create an empty DID registry for a given solana key
     pub fn create_key_registry(ctx: Context<CreateKeyRegistry>, _bump: u8) -> Result<()> {
         ctx.accounts.registry.authority = ctx.accounts.authority.key();
         Ok(())
     }
 
+    /// Add a DID to an authority's registry
     pub fn register_did(ctx: Context<RegisterDid>, _did_bump: u8) -> Result<()> {
         // ensure the authority is an authority on the did account
         // note, anchor has already verified the constraint that did_account
         // is the account for the did.
-        sol_did::is_authority(
+        is_authority(
             &ctx.accounts.did_account.to_account_info(),
-            &[], // the authority must be a direct authority on the DID
-            &ctx.accounts.authority.key(),
+            None, // the authority must be a direct authority on the DID
             &[],
+            ctx.accounts.authority.key().as_ref(),
             None,
             None,
         )
@@ -53,6 +74,7 @@ pub mod did_registry {
         Ok(())
     }
 
+    /// Remove a DID from an authority's registry
     pub fn remove_did(ctx: Context<RemoveDid>) -> Result<()> {
         let did_to_remove = &ctx.accounts.did.key();
 
@@ -72,19 +94,18 @@ pub mod did_registry {
             )
     }
 
+    /// Add a DID to an eth address's registry, if the solana signer is also an authority
     pub fn register_did_for_eth_address(
         ctx: Context<RegisterDidForEthAddress>,
-        _eth_address: [u8; 20],
+        eth_address: [u8; 20],
         _did_bump: u8,
     ) -> Result<()> {
-        // ensure the authority is an authority on the did account
-        // note, anchor has already verified the constraint that did_account
-        // is the account for the did.
-        sol_did::is_authority(
+        // ensure the eth address is an authority on the DID
+        is_authority(
             &ctx.accounts.did_account.to_account_info(),
-            &[], // the authority must be a direct authority on the DID
-            &ctx.accounts.authority.key(),
+            None, // the authority must be a direct authority on the DID
             &[],
+            eth_address.as_ref(),
             None,
             None,
         )
@@ -92,8 +113,62 @@ pub mod did_registry {
         .then_some(())
         .ok_or(ErrorCode::NotAuthority)?;
 
-        // TODO, check that the eth key is an authority on the DID
-        msg!("Warning: register_did_for_eth_key is not checking the authority of the eth address");
+        // ensure the sol signer is also an authority on the DID account
+        is_authority(
+            &ctx.accounts.did_account.to_account_info(),
+            None, // the authority must be a direct authority on the DID
+            &[],
+            ctx.accounts.authority.key().as_ref(),
+            None,
+            None,
+        )
+        .map_err(|_| ErrorCode::DIDError)?
+        .then_some(())
+        .ok_or(ErrorCode::NotAuthority)?;
+
+        let did = &ctx.accounts.did;
+        // ensure the did is not already registered
+        require_eq!(
+            ctx.accounts.registry.dids.contains(&did.key()),
+            false,
+            ErrorCode::DIDRegistered
+        );
+
+        // TODO handle resizing
+        ctx.accounts.registry.dids.push(did.key());
+
+        Ok(())
+    }
+
+    /// Add a DID to an eth address's registry, without requiring the solana signer to be an authority on the DID
+    pub fn register_did_signed_by_eth_address(
+        ctx: Context<RegisterDidSignedByEthAddress>,
+        eth_address: [u8; 20],
+        eth_signature: Secp256k1RawSignature,
+        _did_bump: u8,
+    ) -> Result<()> {
+        // Check the eth signature is a signature of the DID identifier as a byte array
+        // and that it was signed by the eth address
+        validate_eth_signature(
+            ctx.accounts.did_account.authority_key().as_ref(),
+            &eth_signature.into(),
+            eth_address.as_ref(),
+        )?;
+
+        // ensure the authority is an authority on the did account
+        // note, anchor has already verified the constraint that did_account
+        // is the account for the did.
+        is_authority(
+            &ctx.accounts.did_account.to_account_info(),
+            None,
+            &[], // the authority must be a direct authority on the DID
+            eth_address.as_ref(),
+            None,
+            None,
+        )
+        .map_err(|_| ErrorCode::DIDError)?
+        .then_some(())
+        .ok_or(ErrorCode::NotAuthority)?;
 
         let did = &ctx.accounts.did;
         // ensure the did is not already registered
@@ -212,6 +287,43 @@ pub struct RegisterDidForEthAddress<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+#[instruction(
+/// The eth address that the registry is being created for
+eth_address: [u8; 20],
+/// A message signed by the eth address, to prove ownership.
+eth_signature: Secp256k1RawSignature,
+/// The bump seed for the did account
+did_bump: u8,
+)]
+pub struct RegisterDidSignedByEthAddress<'info> {
+    #[account(
+    init_if_needed,
+    payer = payer,
+    space = 8 + KeyRegistry::INITIAL_SIZE,
+    seeds = [KeyRegistry::ETH_SEED_PREFIX, &eth_address],
+    bump,
+    )]
+    pub registry: Account<'info, KeyRegistry>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// The DID to add to the registry. This is the did "identifier", not the did account
+    /// i.e. did:sol:<identifier>
+    /// note - this may or may not be the same as the payer.
+    /// CHECK: This can be any public key. But it should derive the did_account
+    pub did: UncheckedAccount<'info>,
+    /// The account containing the DID document
+    /// This can safely be a DidAccount, rather than UncheckedAccount,
+    /// since, for the DID to include an eth address it must be a non-generative DID.
+    #[account(
+    seeds = [DID_ACCOUNT_SEED, did.key().as_ref()],
+    bump = did_bump,
+    seeds::program = SolDID::id()
+    )]
+    pub did_account: Account<'info, DidAccount>,
+    pub system_program: Program<'info, System>,
+}
+
 #[account]
 pub struct KeyRegistry {
     pub version: u8,
@@ -254,4 +366,10 @@ pub enum ErrorCode {
 
     #[msg("Attempt to remove a DID that is not registered")]
     DIDNotRegistered,
+
+    #[msg("The Eth signature did not sign the message")]
+    InvalidEthSignature,
+
+    #[msg("The Eth signature was signed by the wrong address")]
+    WrongEthSigner,
 }
