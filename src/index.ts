@@ -265,7 +265,7 @@ export class EthRegistry extends Registry {
     signer: EthWallet
   ): Promise<{ signature: number[]; recoveryId: number }> {
     // We do not use a dynamic nonce here - there is no risk of replay when adding a DID to a registry
-    const staticNonce = new BN(0).toBuffer("le", 8);
+    const staticNonce = Buffer.from(new BN(0).toArray("le", 8));
     const messageToSign = Buffer.concat([message, staticNonce]);
     const signatureFull = await signer.signMessage(messageToSign);
 
