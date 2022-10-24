@@ -4,12 +4,12 @@ import {
   BitwiseVerificationMethodFlag,
   DidSolIdentifier,
   DidSolService,
+  ExtendedCluster,
   VerificationMethodFlags,
   VerificationMethodType,
 } from "@identity.com/sol-did-client";
 import { CLUSTER } from "./constants";
 import { Wallet } from "./anchorUtils";
-import { toDid } from "../../src";
 import { arrayify } from "@ethersproject/bytes";
 
 export const addKeyToDID = async (authority: Wallet, key: PublicKey) => {
@@ -50,12 +50,16 @@ export const getDIDAccount = (authority: PublicKey): PublicKey => {
   return did.dataAccount()[0];
 };
 
+export const toDid = (key: PublicKey, cluster: ExtendedCluster = "localnet") =>
+  DidSolIdentifier.create(key, cluster).toString();
+
 export const initializeDIDAccount = async (
-  authority: Wallet
+  authority: Wallet,
+  cluster: ExtendedCluster = "localnet"
 ): Promise<string> => {
   const did = DidSolIdentifier.create(authority.publicKey, CLUSTER);
   const didSolService = DidSolService.build(did, { wallet: authority });
 
   await didSolService.initialize(10_000).rpc();
-  return toDid(authority.publicKey);
+  return toDid(authority.publicKey, cluster);
 };

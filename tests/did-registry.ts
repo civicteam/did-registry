@@ -2,7 +2,7 @@ import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
 import { Keypair } from "@solana/web3.js";
 import { Wallet as EthWallet } from "@ethersproject/wallet";
-import { EthRegistry, ReadOnlyRegistry, Registry, toDid } from "../src";
+import { EthRegistry, ReadOnlyRegistry, Registry } from "../src";
 
 import { DidRegistry } from "../target/types/did_registry";
 import chai from "chai";
@@ -11,8 +11,10 @@ import {
   addEthAddressToDID,
   addKeyToDID,
   initializeDIDAccount,
+  toDid,
 } from "./util/did";
 import { createTestContext, fund } from "./util/anchorUtils";
+import { ExtendedCluster } from "@identity.com/sol-did-client";
 
 chai.use(chaiAsPromised);
 const { expect } = chai;
@@ -21,23 +23,30 @@ describe("did-registry", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
+  const cluster: ExtendedCluster = "localnet";
 
   const ethWallet = EthWallet.createRandom();
 
   const program = anchor.workspace.DidRegistry as Program<DidRegistry>;
 
-  const registry = Registry.for(provider.wallet, program.provider.connection);
+  const registry = Registry.for(
+    provider.wallet,
+    program.provider.connection,
+    cluster
+  );
   const ethRegistry = EthRegistry.forEthAddress(
     ethWallet.address,
     provider.wallet,
-    program.provider.connection
+    program.provider.connection,
+    cluster
   );
 
   it("finds no DIDs registered by default for a Sol key", async () => {
     expect(
       await ReadOnlyRegistry.for(
         provider.wallet.publicKey,
-        program.provider.connection
+        program.provider.connection,
+        cluster
       ).listDIDs()
     ).to.be.empty;
   });
@@ -46,7 +55,8 @@ describe("did-registry", () => {
     expect(
       await ReadOnlyRegistry.forEthAddress(
         ethWallet.address,
-        program.provider.connection
+        program.provider.connection,
+        cluster
       ).listDIDs()
     ).to.be.empty;
   });
