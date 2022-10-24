@@ -6,9 +6,12 @@ import {
   Transaction,
   clusterApiUrl,
 } from "@solana/web3.js";
+import { Wallet as EthWallet } from "@ethersproject/wallet";
 
-const secretKey = require(os.homedir() + "/.config/solana/id.json");
-const keypair = Keypair.fromSecretKey(Buffer.from(secretKey));
+const secretKeySol = require(os.homedir() + "/.config/solana/id.json");
+const keypair = Keypair.fromSecretKey(Buffer.from(secretKeySol));
+
+const secretKeyEth = process.env.ETH_PRIVATE_KEY;
 
 const toWallet = (keypair: Keypair) => ({
   publicKey: keypair.publicKey,
@@ -31,3 +34,5 @@ export const ethRegistry = (address: string) =>
       "confirmed"
     )
   );
+
+export const getEthWallet = () => new EthWallet(secretKeyEth);

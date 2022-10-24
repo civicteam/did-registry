@@ -1,6 +1,7 @@
 import {
   ConfirmOptions,
   PublicKey,
+  Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
 import { AnchorProvider, Program } from "@project-serum/anchor";
@@ -13,6 +14,12 @@ import {
 } from "@identity.com/sol-did-client";
 import { arrayify } from "@ethersproject/bytes";
 import BN from "bn.js";
+
+export type Execution = {
+  rpc(): Promise<string>;
+  transaction(): Promise<Transaction>;
+  instruction(): Promise<TransactionInstruction>;
+};
 
 export const DID_REGISTRY_PROGRAM_ID = new PublicKey(
   "regUajGv87Pti6QRLeeRuQWrarQ1LmEyDXcAozko6Ax"
@@ -47,9 +54,9 @@ export abstract class ARegistry {
       this.getRegistryAddressAndBump();
   }
 
-  protected async didToAccount(did: string): Promise<DidAccount> {
+  protected didToAccount(did: string): DidAccount {
     const didSolIdentifier = DidSolIdentifier.parse(did);
-    const [didAccount, didBump] = await didSolIdentifier.dataAccount();
+    const [didAccount, didBump] = didSolIdentifier.dataAccount();
     return {
       authority: didSolIdentifier.authority,
       account: didAccount,
@@ -146,28 +153,29 @@ export class Registry extends ARegistry {
     );
   }
 
-  protected async init(): Promise<void> {
+  protected async initInstruction(): Promise<TransactionInstruction | null> {
     const registryAccount =
       await this.program.account.keyRegistry.fetchNullable(
         this.registryAddress
       );
 
-    if (!registryAccount) {
-      await this.program.methods
-        .createKeyRegistry(this.registryBump)
-        .accounts({
-          registry: this.registryAddress,
-          authority: this.wallet.publicKey,
-        })
-        .rpc()
-        .then((txSig) => this.confirm(txSig));
-    }
+    if (registryAccount) return null;
+
+    return this.program.methods
+      .createKeyRegistry(this.registryBump)
+      .accounts({
+        registry: this.registryAddress,
+        authority: this.wallet.publicKey,
+      })
+      .instruction();
   }
 
-  async register(did: string): Promise<string> {
-    const account = await this.didToAccount(did);
+  async register(did: string): Promise<Execution> {
+    const account = this.didToAccount(did);
 
-    await this.init();
+    const initInstruction = await this.initInstruction();
+    const initInstructions = initInstruction ? [initInstruction] : [];
+
     return this.program.methods
       .registerDid(account.bump)
       .accounts({
@@ -176,22 +184,19 @@ export class Registry extends ARegistry {
         did: account.authority,
         didAccount: account.account,
       })
-      .rpc();
+      .preInstructions(initInstructions);
   }
 
-  async removePubkey(did: PublicKey): Promise<string> {
-    return this.program.methods
-      .removeDid()
-      .accounts({
-        registry: this.registryAddress,
-        authority: this.wallet.publicKey,
-        did,
-      })
-      .rpc();
+  removePubkey(did: PublicKey): Execution {
+    return this.program.methods.removeDid().accounts({
+      registry: this.registryAddress,
+      authority: this.wallet.publicKey,
+      did,
+    });
   }
 
-  async remove(did: string): Promise<string> {
-    const account = await this.didToAccount(did);
+  remove(did: string): Execution {
+    const account = this.didToAccount(did);
     return this.removePubkey(account.authority);
   }
 
@@ -220,8 +225,8 @@ export class EthRegistry extends Registry {
     );
   }
 
-  async register(did: string) {
-    const account = await this.didToAccount(did);
+  async register(did: string): Promise<Execution> {
+    const account = this.didToAccount(did);
 
     return this.program.methods
       .registerDidForEthAddress(Array.from(this.address), account.bump)
@@ -230,8 +235,7 @@ export class EthRegistry extends Registry {
         authority: this.wallet.publicKey,
         did: account.authority,
         didAccount: account.account,
-      })
-      .rpc();
+      });
   }
 
   private async ethSignMessage(
@@ -255,8 +259,8 @@ export class EthRegistry extends Registry {
     };
   }
 
-  async registerSigned(did: string, ethWallet: EthWallet) {
-    const account = await this.didToAccount(did);
+  async registerSigned(did: string, ethWallet: EthWallet): Promise<Execution> {
+    const account = this.didToAccount(did);
     const signature = await this.ethSignMessage(
       account.authority.toBuffer(),
       ethWallet
@@ -280,7 +284,6 @@ export class EthRegistry extends Registry {
         registry: this.registryAddress,
         did: account.authority,
         didAccount: account.account,
-      })
-      .rpc();
+      });
   }
 }

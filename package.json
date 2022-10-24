@@ -17,7 +17,7 @@
         "test": "anchor test"
     },
     "dependencies": {
-        "@identity.com/sol-did-client": "^3.0.1-beta1",
+        "@identity.com/sol-did-client": "^3.1.4",
         "@project-serum/anchor": "^0.25.0"
     },
     "devDependencies": {
