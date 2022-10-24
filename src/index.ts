@@ -283,6 +283,8 @@ export class EthRegistry extends Registry {
 
   async registerSigned(did: string, ethWallet: EthWallet): Promise<Execution> {
     const account = this.didToAccount(did);
+    // TODO: Change message to come directly from instruction OR only accept update via cryptid
+    // TODO: This allows replay attacks
     const signature = await this.ethSignMessage(
       account.authority.toBuffer(),
       ethWallet

@@ -149,6 +149,8 @@ pub mod did_registry {
     ) -> Result<()> {
         // Check the eth signature is a signature of the DID identifier as a byte array
         // and that it was signed by the eth address
+        // TODO: Change message to come directly from instruction OR only accept update via cryptid
+        // TODO: This allows replay attacks
         validate_eth_signature(
             ctx.accounts.did_account.authority_key().as_ref(),
             &eth_signature.into(),

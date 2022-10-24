@@ -9,7 +9,9 @@ import { ethRegistry, getEthWallet } from "./util/util";
   if (process.argv.length > 3) {
     const didToRegister = process.argv[3];
 
-    await ethRegistry(ethAddress).registerSigned(didToRegister, getEthWallet()).then((execution) => execution.rpc());
+    await ethRegistry(ethAddress)
+      .registerSigned(didToRegister, getEthWallet())
+      .then((execution) => execution.rpc());
     console.log("Registered DID: " + didToRegister);
   }
 })().catch(console.error);
