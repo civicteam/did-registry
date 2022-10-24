@@ -64,14 +64,16 @@ describe("did-registry", () => {
   it("fails to register a DID if the key is not an authority", async () => {
     const someOtherDid = toDid(Keypair.generate().publicKey);
 
-    const shouldFail = registry.register(someOtherDid);
+    const shouldFail = registry
+      .register(someOtherDid)
+      .then((execution) => execution.rpc());
 
     return expect(shouldFail).to.be.rejectedWith(/NotAuthority/);
   });
 
   it("can register a generative DID", async () => {
     const did = toDid(provider.wallet.publicKey);
-    await registry.register(did);
+    await registry.register(did).then((execution) => execution.rpc());
 
     const registeredDids = await registry.listDIDs();
 
@@ -84,7 +86,9 @@ describe("did-registry", () => {
 
     const secondAuthorityDid = await initializeDIDAccount(secondAuthority);
 
-    const shouldFail = registry.register(secondAuthorityDid);
+    const shouldFail = registry
+      .register(secondAuthorityDid)
+      .then((execution) => execution.rpc());
 
     return expect(shouldFail).to.be.rejectedWith(/NotAuthority/);
   });
@@ -98,7 +102,9 @@ describe("did-registry", () => {
     // adding the key as an authority means that the key can now register the secondAuthorityDID in its registry
     await addKeyToDID(secondAuthority, program.provider.publicKey);
 
-    await registry.register(secondAuthorityDid);
+    await registry
+      .register(secondAuthorityDid)
+      .then((execution) => execution.rpc());
 
     const registeredDids = await registry.listDIDs();
 
@@ -115,9 +121,13 @@ describe("did-registry", () => {
     await addKeyToDID(secondAuthority, program.provider.publicKey);
 
     // works the first time
-    await registry.register(secondAuthorityDid);
+    await registry
+      .register(secondAuthorityDid)
+      .then((execution) => execution.rpc());
     // fails the second time
-    const shouldFail = registry.register(secondAuthorityDid);
+    const shouldFail = registry
+      .register(secondAuthorityDid)
+      .then((execution) => execution.rpc());
 
     return expect(shouldFail).to.be.rejectedWith(/DIDRegistered/);
   });
@@ -128,14 +138,16 @@ describe("did-registry", () => {
     const secondAuthorityDid = await initializeDIDAccount(secondAuthority);
     await addKeyToDID(secondAuthority, program.provider.publicKey);
 
-    await registry.register(secondAuthorityDid);
+    await registry
+      .register(secondAuthorityDid)
+      .then((execution) => execution.rpc());
 
     // the did is registered
     let registeredDids = await registry.listDIDs();
 
     expect(registeredDids).to.include(secondAuthorityDid);
 
-    await registry.remove(secondAuthorityDid);
+    await registry.remove(secondAuthorityDid).rpc();
 
     // the did is no longer registered
     registeredDids = await registry.listDIDs();
@@ -146,7 +158,7 @@ describe("did-registry", () => {
   it("cannot remove a DID that was not registered", async () => {
     const someDID = toDid(Keypair.generate().publicKey);
 
-    const shouldFail = registry.remove(someDID);
+    const shouldFail = registry.remove(someDID).rpc();
 
     return expect(shouldFail).to.be.rejectedWith(/DIDNotRegistered/);
   });
@@ -157,7 +169,7 @@ describe("did-registry", () => {
     await initializeDIDAccount(provider.wallet);
     await addEthAddressToDID(provider.wallet, ethWallet.address);
 
-    await ethRegistry.register(did);
+    await ethRegistry.register(did).then((execution) => execution.rpc());
 
     const registeredDids = await ethRegistry.listDIDs();
 
@@ -174,7 +186,9 @@ describe("did-registry", () => {
 
     // note, the ethRegistry is using a separate wallet (not secondAuthority) to pay for the transaction
     // the only authority needed on the DID is the ethWallet
-    await ethRegistry.registerSigned(did, ethWallet);
+    await ethRegistry
+      .registerSigned(did, ethWallet)
+      .then((execution) => execution.rpc());
 
     const registeredDids = await ethRegistry.listDIDs();
 

@@ -1,4 +1,5 @@
 
+src/types/did_registry.ts
 .anchor
 .DS_Store
 target

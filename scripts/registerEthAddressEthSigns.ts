@@ -1,4 +1,4 @@
-import { ethRegistry } from "./util/util";
+import { ethRegistry, getEthWallet } from "./util/util";
 
 (async () => {
   const ethAddress = process.argv[2];
@@ -10,7 +10,7 @@ import { ethRegistry } from "./util/util";
     const didToRegister = process.argv[3];
 
     await ethRegistry(ethAddress)
-      .register(didToRegister)
+      .registerSigned(didToRegister, getEthWallet())
       .then((execution) => execution.rpc());
     console.log("Registered DID: " + didToRegister);
   }
