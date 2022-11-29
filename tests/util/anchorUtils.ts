@@ -1,7 +1,7 @@
 import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { AnchorProvider, Program, Provider } from "@project-serum/anchor";
 import * as anchor from "@project-serum/anchor";
-import { DidRegistry } from "../../target/types/did_registry";
+import { DidRegistry } from "../../src/types/did_registry";
 
 const envProvider = anchor.AnchorProvider.env();
 const envProgram = anchor.workspace.DidRegistry;

@@ -9,12 +9,13 @@ import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import {
   addEthAddressToDID,
-  addKeyToDID,
+  addKeyToDID, createDIDAndAddKey,
   initializeDIDAccount,
   toDid,
 } from "./util/did";
 import { createTestContext, fund } from "./util/anchorUtils";
 import { ExtendedCluster } from "@identity.com/sol-did-client";
+import {times} from "./util/lang";
 
 chai.use(chaiAsPromised);
 const { expect } = chai;
@@ -40,6 +41,16 @@ describe("did-registry", () => {
     program.provider.connection,
     cluster
   );
+
+  // catch-all to ensure all tests start from an empty registry
+  afterEach('close registry', () => registry.close().rpc().catch((error) => {
+    if (error.error.errorCode.code === 'AccountNotInitialized') {
+      // ignore - the test does not need the registry to be created
+      return;
+    }
+
+    throw error;
+  }));
 
   it("finds no DIDs registered by default for a Sol key", async () => {
     expect(
@@ -156,8 +167,12 @@ describe("did-registry", () => {
   });
 
   it("cannot remove a DID that was not registered", async () => {
-    const someDID = toDid(Keypair.generate().publicKey);
+    // set up the registry
+    const did = toDid(provider.wallet.publicKey);
+    await registry.register(did).then((execution) => execution.rpc());
 
+    // attempt to remove a non-registered DID
+    const someDID = toDid(Keypair.generate().publicKey);
     const shouldFail = registry.remove(someDID).rpc();
 
     return expect(shouldFail).to.be.rejectedWith(/DIDNotRegistered/);
@@ -193,5 +208,48 @@ describe("did-registry", () => {
     const registeredDids = await ethRegistry.listDIDs();
 
     expect(registeredDids).to.include(did);
+  });
+
+  it("automatically resizes when registering more than four DIDs", async () => {
+    const fiveDids = await Promise.all(times(5)(() => createDIDAndAddKey(program.provider.publicKey)));
+
+    // these four work
+    await registry.register(fiveDids[0]).then((execution) => execution.rpc());
+    await registry.register(fiveDids[1]).then((execution) => execution.rpc());
+    await registry.register(fiveDids[2]).then((execution) => execution.rpc());
+    await registry.register(fiveDids[3]).then((execution) => execution.rpc());
+
+    const spaceBefore = await registry.analyseSpace()
+
+    // this one works after a resize
+    await registry.register(fiveDids[4]).then((execution) => execution.rpc());
+
+    // check all dids are present
+    const registeredDids = await registry.listDIDs();
+    expect(registeredDids).to.deep.equal(fiveDids);
+
+    // check the account was resized
+    const spaceAfter = await registry.analyseSpace();
+    expect(spaceAfter.maxCount).to.be.gt(spaceBefore.maxCount);
+  });
+
+  it("successfully registers more than four DIDs after a manual resize", async () => {
+    const fiveDids = await Promise.all(times(5)(() => createDIDAndAddKey(program.provider.publicKey)));
+
+    // these four work before resizing
+    await registry.register(fiveDids[0]).then((execution) => execution.rpc());
+    await registry.register(fiveDids[1]).then((execution) => execution.rpc());
+    await registry.register(fiveDids[2]).then((execution) => execution.rpc());
+    await registry.register(fiveDids[3]).then((execution) => execution.rpc());
+
+    // resizes
+    await registry.resize(5).rpc();
+
+    // now this one will also pass
+    await registry.register(fiveDids[4]).then((execution) => execution.rpc());
+
+    // check all dids are present
+    const registeredDids = await registry.listDIDs();
+    expect(registeredDids).to.deep.equal(fiveDids);
   });
 });

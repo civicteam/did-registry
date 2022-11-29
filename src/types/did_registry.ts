@@ -229,31 +229,56 @@ export type DidRegistry = {
           "type": "u8"
         }
       ]
+    },
+    {
+      "name": "resizeKeyRegistry",
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "didCount",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "closeKeyRegistry",
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
-    {
-      "name": "keyRegistry",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "version",
-            "type": "u8"
-          },
-          {
-            "name": "authority",
-            "type": "publicKey"
-          },
-          {
-            "name": "dids",
-            "type": {
-              "vec": "publicKey"
-            }
-          }
-        ]
-      }
-    },
     {
       "name": "controllerRegistry",
       "type": {
@@ -269,6 +294,28 @@ export type DidRegistry = {
           },
           {
             "name": "controlledDids",
+            "type": {
+              "vec": "publicKey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "keyRegistry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "dids",
             "type": {
               "vec": "publicKey"
             }
@@ -330,6 +377,11 @@ export type DidRegistry = {
       "code": 6005,
       "name": "WrongEthSigner",
       "msg": "The Eth signature was signed by the wrong address"
+    },
+    {
+      "code": 6006,
+      "name": "RegistryFull",
+      "msg": "The registry has exceeded its maximum size - use the resize instruction to get more space"
     }
   ]
 };
@@ -565,31 +617,56 @@ export const IDL: DidRegistry = {
           "type": "u8"
         }
       ]
+    },
+    {
+      "name": "resizeKeyRegistry",
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "didCount",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "closeKeyRegistry",
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
-    {
-      "name": "keyRegistry",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "version",
-            "type": "u8"
-          },
-          {
-            "name": "authority",
-            "type": "publicKey"
-          },
-          {
-            "name": "dids",
-            "type": {
-              "vec": "publicKey"
-            }
-          }
-        ]
-      }
-    },
     {
       "name": "controllerRegistry",
       "type": {
@@ -605,6 +682,28 @@ export const IDL: DidRegistry = {
           },
           {
             "name": "controlledDids",
+            "type": {
+              "vec": "publicKey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "keyRegistry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "dids",
             "type": {
               "vec": "publicKey"
             }
@@ -666,6 +765,11 @@ export const IDL: DidRegistry = {
       "code": 6005,
       "name": "WrongEthSigner",
       "msg": "The Eth signature was signed by the wrong address"
+    },
+    {
+      "code": 6006,
+      "name": "RegistryFull",
+      "msg": "The registry has exceeded its maximum size - use the resize instruction to get more space"
     }
   ]
 };
