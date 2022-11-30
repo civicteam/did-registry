@@ -1,11 +1,9 @@
+use crate::{
+    state::key_registry::KeyRegistry, util::eth_signing::Secp256k1RawSignature, SolDID,
+    DID_ACCOUNT_SEED,
+};
 use anchor_lang::prelude::*;
 use sol_did::state::DidAccount;
-use crate::{
-    SolDID,
-    state::key_registry::KeyRegistry,
-    DID_ACCOUNT_SEED,
-    util::eth_signing::Secp256k1RawSignature
-};
 
 #[derive(Accounts)]
 #[instruction(

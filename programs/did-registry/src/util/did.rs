@@ -1,5 +1,5 @@
-use std::str::FromStr;
 use anchor_lang::prelude::*;
+use std::str::FromStr;
 
 // TODO move to sol_did
 pub const DID_ACCOUNT_SEED: &[u8] = b"did-account";

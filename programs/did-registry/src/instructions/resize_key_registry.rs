@@ -1,5 +1,5 @@
-use anchor_lang::prelude::*;
 use crate::state::key_registry::KeyRegistry;
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 #[instruction(did_count: u32)]

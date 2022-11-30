@@ -1,22 +1,26 @@
-use crate::{state::key_registry::KeyRegistry, SolDID, DID_ACCOUNT_SEED};
+use crate::state::controller_registry::ControllerRegistry;
+use crate::{SolDID, DID_ACCOUNT_SEED};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 #[instruction(
+/// the bump seed for the registry
+bump: u8,
 /// The bump seed for the did account
 did_bump: u8,
 )]
-pub struct RegisterDid<'info> {
+pub struct CreateControllerRegistry<'info> {
     #[account(
-    mut,
-    seeds = [KeyRegistry::SEED_PREFIX, authority.key().as_ref()],
+    init,
+    payer = authority,
+    space = 8 + ControllerRegistry::INITIAL_SIZE,
+    seeds = [ControllerRegistry::SEED_PREFIX, did.key().as_ref()],
     bump,
-    has_one = authority
     )]
-    pub registry: Account<'info, KeyRegistry>,
-    /// The authority that owns the registry
+    pub registry: Account<'info, ControllerRegistry>,
+    #[account(mut)]
     pub authority: Signer<'info>,
-    /// The DID to add to the registry. This is the did "identifier", not the did account
+    /// The DID to create the registry for. This is the did "identifier", not the did account
     /// i.e. did:sol:<identifier>
     /// note - this may or may not be the same as the authority.
     /// CHECK: This can be any public key. But it should derive the did_account
@@ -31,4 +35,5 @@ pub struct RegisterDid<'info> {
     seeds::program = SolDID::id()
     )]
     pub did_account: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
 }

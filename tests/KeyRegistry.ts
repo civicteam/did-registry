@@ -9,18 +9,19 @@ import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import {
   addEthAddressToDID,
-  addKeyToDID, createDIDAndAddKey,
+  addKeyToDID,
+  createDIDAndAddKey,
   initializeDIDAccount,
   toDid,
 } from "./util/did";
 import { createTestContext, fund } from "./util/anchorUtils";
 import { ExtendedCluster } from "@identity.com/sol-did-client";
-import {times} from "./util/lang";
+import { times } from "./util/lang";
 
 chai.use(chaiAsPromised);
 const { expect } = chai;
 
-describe("did-registry", () => {
+describe("Key Registry", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
@@ -43,14 +44,19 @@ describe("did-registry", () => {
   );
 
   // catch-all to ensure all tests start from an empty registry
-  afterEach('close registry', () => registry.close().rpc().catch((error) => {
-    if (error.error.errorCode.code === 'AccountNotInitialized') {
-      // ignore - the test does not need the registry to be created
-      return;
-    }
+  afterEach("close registry", () =>
+    registry
+      .close()
+      .rpc()
+      .catch((error) => {
+        if (error.error.errorCode.code === "AccountNotInitialized") {
+          // ignore - the test does not need the registry to be created
+          return;
+        }
 
-    throw error;
-  }));
+        throw error;
+      })
+  );
 
   it("finds no DIDs registered by default for a Sol key", async () => {
     expect(
@@ -211,7 +217,9 @@ describe("did-registry", () => {
   });
 
   it("automatically resizes when registering more than four DIDs", async () => {
-    const fiveDids = await Promise.all(times(5)(() => createDIDAndAddKey(program.provider.publicKey)));
+    const fiveDids = await Promise.all(
+      times(5)(() => createDIDAndAddKey(program.provider.publicKey))
+    );
 
     // these four work
     await registry.register(fiveDids[0]).then((execution) => execution.rpc());
@@ -219,7 +227,7 @@ describe("did-registry", () => {
     await registry.register(fiveDids[2]).then((execution) => execution.rpc());
     await registry.register(fiveDids[3]).then((execution) => execution.rpc());
 
-    const spaceBefore = await registry.analyseSpace()
+    const spaceBefore = await registry.analyseSpace();
 
     // this one works after a resize
     await registry.register(fiveDids[4]).then((execution) => execution.rpc());
@@ -234,7 +242,9 @@ describe("did-registry", () => {
   });
 
   it("successfully registers more than four DIDs after a manual resize", async () => {
-    const fiveDids = await Promise.all(times(5)(() => createDIDAndAddKey(program.provider.publicKey)));
+    const fiveDids = await Promise.all(
+      times(5)(() => createDIDAndAddKey(program.provider.publicKey))
+    );
 
     // these four work before resizing
     await registry.register(fiveDids[0]).then((execution) => execution.rpc());

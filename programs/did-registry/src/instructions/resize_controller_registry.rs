@@ -1,5 +1,5 @@
-use anchor_lang::prelude::*;
 use crate::state::controller_registry::ControllerRegistry;
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 #[instruction(did_count: u32)]
@@ -15,6 +15,6 @@ pub struct ResizeControllerRegistry<'info> {
     )]
     pub registry: Account<'info, ControllerRegistry>,
     #[account(mut)]
-    pub authority: Signer<'info>,    // TODO prove ownership of did using did_sol
+    pub authority: Signer<'info>, // TODO prove ownership of did using did_sol
     pub system_program: Program<'info, System>,
 }

@@ -1,9 +1,5 @@
+use crate::{state::key_registry::KeyRegistry, SolDID, DID_ACCOUNT_SEED};
 use anchor_lang::prelude::*;
-use crate::{
-    SolDID,
-    state::key_registry::KeyRegistry,
-    DID_ACCOUNT_SEED
-};
 
 #[derive(Accounts)]
 #[instruction(
