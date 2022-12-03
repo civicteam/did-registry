@@ -1,9 +1,23 @@
 use crate::ErrorCode;
 use anchor_lang::prelude::*;
 use sol_did::{
-    state::Secp256k1RawSignature,
+    state::Secp256k1RawSignature as SolDidSecp256k1RawSignature,
     utils::{convert_secp256k1pub_key_to_address, eth_verify_message},
 };
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct Secp256k1RawSignature {
+    pub signature: [u8; 64],
+    pub recovery_id: u8,
+}
+impl From<Secp256k1RawSignature> for SolDidSecp256k1RawSignature {
+    fn from(signature: Secp256k1RawSignature) -> Self {
+        SolDidSecp256k1RawSignature {
+            signature: signature.signature,
+            recovery_id: signature.recovery_id,
+        }
+    }
+}
 
 pub fn validate_eth_signature(
     message: &[u8],

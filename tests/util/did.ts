@@ -9,7 +9,7 @@ import {
   VerificationMethodType,
 } from "@identity.com/sol-did-client";
 import { CLUSTER } from "./constants";
-import { Wallet } from "./anchorUtils";
+import { createTestContext, fund, Wallet } from "./anchorUtils";
 import { arrayify } from "@ethersproject/bytes";
 
 export const addKeyToDID = async (authority: Wallet, key: PublicKey) => {
@@ -23,6 +23,15 @@ export const addKeyToDID = async (authority: Wallet, key: PublicKey) => {
   };
 
   await didSolService.addVerificationMethod(newKeyVerificationMethod).rpc(); //{ skipPreflight: true, commitment: 'finalized' });
+};
+
+export const addControllerToDID = async (
+  authority: Wallet,
+  controller: string
+) => {
+  const did = DidSolIdentifier.create(authority.publicKey, CLUSTER);
+  const didSolService = DidSolService.build(did, { wallet: authority });
+  await didSolService.setControllers([controller]).rpc();
 };
 
 export const addEthAddressToDID = async (
@@ -62,4 +71,26 @@ export const initializeDIDAccount = async (
 
   await didSolService.initialize(10_000).rpc();
   return toDid(authority.publicKey, cluster);
+};
+
+export const createDIDAndAddKey = async (keyToAdd: PublicKey) => {
+  const { authority: didAuthority } = createTestContext();
+  await fund(didAuthority.publicKey);
+
+  const did = await initializeDIDAccount(didAuthority);
+
+  await addKeyToDID(didAuthority, keyToAdd);
+
+  return did;
+};
+
+export const createDIDAndAddController = async (controller: string) => {
+  const { authority: didAuthority } = createTestContext();
+  await fund(didAuthority.publicKey);
+
+  const did = await initializeDIDAccount(didAuthority);
+
+  await addControllerToDID(didAuthority, controller);
+
+  return did;
 };

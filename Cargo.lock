@@ -510,6 +510,7 @@ name = "did-registry"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "itertools",
  "sol-did",
 ]
 
@@ -1119,8 +1120,8 @@ checksum = "2fd0db749597d91ff862fd1d55ea87f7855a744a8425a64695b6fca237d1dad1"
 
 [[package]]
 name = "sol-did"
-version = "3.1.1"
-source = "git+https://github.com/identity-com/sol-did?rev=be43638398a92235a8b4831649edc50b381565cc#be43638398a92235a8b4831649edc50b381565cc"
+version = "3.1.4"
+source = "git+https://github.com/identity-com/sol-did?rev=642b2c45d6f2ece1668f44e715caece4d2b712d8#642b2c45d6f2ece1668f44e715caece4d2b712d8"
 dependencies = [
  "anchor-lang",
  "bitflags",

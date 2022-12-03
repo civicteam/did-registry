@@ -229,31 +229,263 @@ export type DidRegistry = {
           "type": "u8"
         }
       ]
+    },
+    {
+      "name": "resizeKeyRegistry",
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "didCount",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "closeKeyRegistry",
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "createControllerRegistry",
+      "docs": [
+        "Create an empty controller registry for a given DID"
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "did",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The DID to create the registry for. This is the did \"identifier\", not the did account",
+            "i.e. did:sol:<identifier>",
+            "note - this may or may not be the same as the authority."
+          ]
+        },
+        {
+          "name": "didAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The account containing the DID document",
+            "Specifically, the did account is checked to see if it has the authority as a signer",
+            "Since it can be a generative DID, we do not use Account<DidAccount> here"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": "u8"
+        },
+        {
+          "name": "didBump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "registerControlledDid",
+      "docs": [
+        "Add a controlled DID to an authority's controller registry"
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The authority that owns the registry"
+          ]
+        },
+        {
+          "name": "controlledDid",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The controlled did to add to the registry. This is the did \"identifier\", not the did account",
+            "i.e. did:sol:<identifier>",
+            "note - this may or may not be the same as the authority."
+          ]
+        },
+        {
+          "name": "controlledDidAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The account containing the controlled DID document",
+            "This document must contain registry.did as a controller (checked by SolDid)."
+          ]
+        },
+        {
+          "name": "didAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The account containing the DID document that this registry applies to.",
+            "This is required, in order to check that the authority is an authority on the DID",
+            "Specifically, the did account is checked to see if it has the authority as a signer",
+            "Since it can be a generative DID, we do not use Account<DidAccount> here"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "didBump",
+          "type": "u8"
+        },
+        {
+          "name": "controlledDidBump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "removeControlledDid",
+      "docs": [
+        "Remove a controlled DID from a controller registry"
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The authority that owns the registry"
+          ]
+        },
+        {
+          "name": "didToRemove",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The DID to remove from the registry"
+          ]
+        },
+        {
+          "name": "didAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The account containing the DID document that this registry applies to.",
+            "This is required, in order to check that the authority is an authority on the DID",
+            "Specifically, the did account is checked to see if it has the authority as a signer",
+            "Since it can be a generative DID, we do not use Account<DidAccount> here"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "didBump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "resizeControllerRegistry",
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "didCount",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "closeControllerRegistry",
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
-    {
-      "name": "keyRegistry",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "version",
-            "type": "u8"
-          },
-          {
-            "name": "authority",
-            "type": "publicKey"
-          },
-          {
-            "name": "dids",
-            "type": {
-              "vec": "publicKey"
-            }
-          }
-        ]
-      }
-    },
     {
       "name": "controllerRegistry",
       "type": {
@@ -269,6 +501,28 @@ export type DidRegistry = {
           },
           {
             "name": "controlledDids",
+            "type": {
+              "vec": "publicKey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "keyRegistry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "dids",
             "type": {
               "vec": "publicKey"
             }
@@ -313,23 +567,33 @@ export type DidRegistry = {
     },
     {
       "code": 6002,
+      "name": "NotController",
+      "msg": "The registry DID is not an controller of the DID being added"
+    },
+    {
+      "code": 6003,
       "name": "DIDRegistered",
       "msg": "The DID is already registered"
     },
     {
-      "code": 6003,
+      "code": 6004,
       "name": "DIDNotRegistered",
       "msg": "Attempt to remove a DID that is not registered"
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "InvalidEthSignature",
       "msg": "The Eth signature did not sign the message"
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "WrongEthSigner",
       "msg": "The Eth signature was signed by the wrong address"
+    },
+    {
+      "code": 6007,
+      "name": "RegistryFull",
+      "msg": "The registry has exceeded its maximum size - use the resize instruction to get more space"
     }
   ]
 };
@@ -565,31 +829,263 @@ export const IDL: DidRegistry = {
           "type": "u8"
         }
       ]
+    },
+    {
+      "name": "resizeKeyRegistry",
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "didCount",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "closeKeyRegistry",
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "createControllerRegistry",
+      "docs": [
+        "Create an empty controller registry for a given DID"
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "did",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The DID to create the registry for. This is the did \"identifier\", not the did account",
+            "i.e. did:sol:<identifier>",
+            "note - this may or may not be the same as the authority."
+          ]
+        },
+        {
+          "name": "didAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The account containing the DID document",
+            "Specifically, the did account is checked to see if it has the authority as a signer",
+            "Since it can be a generative DID, we do not use Account<DidAccount> here"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": "u8"
+        },
+        {
+          "name": "didBump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "registerControlledDid",
+      "docs": [
+        "Add a controlled DID to an authority's controller registry"
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The authority that owns the registry"
+          ]
+        },
+        {
+          "name": "controlledDid",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The controlled did to add to the registry. This is the did \"identifier\", not the did account",
+            "i.e. did:sol:<identifier>",
+            "note - this may or may not be the same as the authority."
+          ]
+        },
+        {
+          "name": "controlledDidAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The account containing the controlled DID document",
+            "This document must contain registry.did as a controller (checked by SolDid)."
+          ]
+        },
+        {
+          "name": "didAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The account containing the DID document that this registry applies to.",
+            "This is required, in order to check that the authority is an authority on the DID",
+            "Specifically, the did account is checked to see if it has the authority as a signer",
+            "Since it can be a generative DID, we do not use Account<DidAccount> here"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "didBump",
+          "type": "u8"
+        },
+        {
+          "name": "controlledDidBump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "removeControlledDid",
+      "docs": [
+        "Remove a controlled DID from a controller registry"
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The authority that owns the registry"
+          ]
+        },
+        {
+          "name": "didToRemove",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The DID to remove from the registry"
+          ]
+        },
+        {
+          "name": "didAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The account containing the DID document that this registry applies to.",
+            "This is required, in order to check that the authority is an authority on the DID",
+            "Specifically, the did account is checked to see if it has the authority as a signer",
+            "Since it can be a generative DID, we do not use Account<DidAccount> here"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "didBump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "resizeControllerRegistry",
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "didCount",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "closeControllerRegistry",
+      "accounts": [
+        {
+          "name": "registry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
-    {
-      "name": "keyRegistry",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "version",
-            "type": "u8"
-          },
-          {
-            "name": "authority",
-            "type": "publicKey"
-          },
-          {
-            "name": "dids",
-            "type": {
-              "vec": "publicKey"
-            }
-          }
-        ]
-      }
-    },
     {
       "name": "controllerRegistry",
       "type": {
@@ -605,6 +1101,28 @@ export const IDL: DidRegistry = {
           },
           {
             "name": "controlledDids",
+            "type": {
+              "vec": "publicKey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "keyRegistry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "dids",
             "type": {
               "vec": "publicKey"
             }
@@ -649,23 +1167,33 @@ export const IDL: DidRegistry = {
     },
     {
       "code": 6002,
+      "name": "NotController",
+      "msg": "The registry DID is not an controller of the DID being added"
+    },
+    {
+      "code": 6003,
       "name": "DIDRegistered",
       "msg": "The DID is already registered"
     },
     {
-      "code": 6003,
+      "code": 6004,
       "name": "DIDNotRegistered",
       "msg": "Attempt to remove a DID that is not registered"
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "InvalidEthSignature",
       "msg": "The Eth signature did not sign the message"
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "WrongEthSigner",
       "msg": "The Eth signature was signed by the wrong address"
+    },
+    {
+      "code": 6007,
+      "name": "RegistryFull",
+      "msg": "The registry has exceeded its maximum size - use the resize instruction to get more space"
     }
   ]
 };
