@@ -40,7 +40,10 @@ export class Registry extends AbstractKeyRegistry {
   protected async resizeInstructionIfNeeded(): Promise<TransactionInstruction | null> {
     const space = await this.analyseSpace();
 
-    if (space.count < space.maxCount) return null;
+    // If we have space, don't resize
+    // Also, don't resize if maxCount is at 0, as this indicates that the registry is not yet initialised
+    // Doing so is the job of the initInstruction
+    if (space.count < space.maxCount || space.maxCount === 0) return null;
 
     return this.program.methods
       .resizeKeyRegistry(space.count + SPACE_BUFFER)

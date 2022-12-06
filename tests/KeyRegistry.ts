@@ -129,13 +129,13 @@ describe("Key Registry", () => {
     expect(registeredDids).to.include(secondAuthorityDid);
   });
 
-  it.only("can add a key to a DID, and register that DID against the key in the same transaction", async () => {
+  it("can add a key to a DID, and register that DID against the key in the same transaction", async () => {
     const { authority: secondAuthority, keypair: secondKeypair } =
       createTestContext();
     await fund(secondAuthority.publicKey);
 
     // This is the DID that is having the key (provider.publicKey) added to it
-    const secondAuthorityDID = toDid(secondAuthority.publicKey);
+    const didToRegister = toDid(secondAuthority.publicKey);
 
     // Returns two instructions: Initialize and AddVerificationMethod
     const addKeyToDIDInstructions = await addKeyToDIDExecution(
@@ -145,20 +145,26 @@ describe("Key Registry", () => {
 
     // Returns two instructions: CreateKeyRegistry and RegisterDID
     const registerDIDInstructions = await registry
-      .register(secondAuthorityDID)
+      .register(didToRegister)
       .then((execution) => execution.transaction())
       .then((transaction) => transaction.instructions);
 
-    const transaction = new Transaction().add(
+    const allInstructions = [
       ...addKeyToDIDInstructions,
-      ...registerDIDInstructions
-    );
+      ...registerDIDInstructions,
+    ];
 
-    await provider.sendAndConfirm(transaction, [secondKeypair]);
+    // So total, four instructions
+    expect(allInstructions.length).to.equal(4);
 
+    // Execute all instructions - signers are the registry key holder and an existing authority on didToRegister
+    await provider.sendAndConfirm(new Transaction().add(...allInstructions), [
+      secondKeypair,
+    ]);
+
+    // Check the did was added to the registry
     const registeredDids = await registry.listDIDs();
-
-    expect(registeredDids).to.include(secondAuthorityDID);
+    expect(registeredDids).to.include(didToRegister);
   });
 
   it("cannot register the same DID twice", async () => {
