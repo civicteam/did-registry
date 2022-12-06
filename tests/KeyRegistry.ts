@@ -1,6 +1,6 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
-import { Keypair } from "@solana/web3.js";
+import { Keypair, Transaction } from "@solana/web3.js";
 import { Wallet as EthWallet } from "@ethersproject/wallet";
 import { EthRegistry, ReadOnlyRegistry, Registry } from "../src";
 
@@ -10,6 +10,7 @@ import chaiAsPromised from "chai-as-promised";
 import {
   addEthAddressToDID,
   addKeyToDID,
+  addKeyToDIDExecution,
   createDIDAndAddKey,
   initializeDIDAccount,
   toDid,
@@ -126,6 +127,44 @@ describe("Key Registry", () => {
     const registeredDids = await registry.listDIDs();
 
     expect(registeredDids).to.include(secondAuthorityDid);
+  });
+
+  it("can add a key to a DID, and register that DID against the key in the same transaction", async () => {
+    const { authority: secondAuthority, keypair: secondKeypair } =
+      createTestContext();
+    await fund(secondAuthority.publicKey);
+
+    // This is the DID that is having the key (provider.publicKey) added to it
+    const didToRegister = toDid(secondAuthority.publicKey);
+
+    // Returns two instructions: Initialize and AddVerificationMethod
+    const addKeyToDIDInstructions = await addKeyToDIDExecution(
+      secondAuthority,
+      provider.publicKey
+    ).instructions();
+
+    // Returns two instructions: CreateKeyRegistry and RegisterDID
+    const registerDIDInstructions = await registry
+      .register(didToRegister)
+      .then((execution) => execution.transaction())
+      .then((transaction) => transaction.instructions);
+
+    const allInstructions = [
+      ...addKeyToDIDInstructions,
+      ...registerDIDInstructions,
+    ];
+
+    // So total, four instructions
+    expect(allInstructions.length).to.equal(4);
+
+    // Execute all instructions - signers are the registry key holder and an existing authority on didToRegister
+    await provider.sendAndConfirm(new Transaction().add(...allInstructions), [
+      secondKeypair,
+    ]);
+
+    // Check the did was added to the registry
+    const registeredDids = await registry.listDIDs();
+    expect(registeredDids).to.include(didToRegister);
   });
 
   it("cannot register the same DID twice", async () => {

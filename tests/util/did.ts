@@ -12,7 +12,7 @@ import { CLUSTER } from "./constants";
 import { createTestContext, fund, Wallet } from "./anchorUtils";
 import { arrayify } from "@ethersproject/bytes";
 
-export const addKeyToDID = async (authority: Wallet, key: PublicKey) => {
+export const addKeyToDIDExecution = (authority: Wallet, key: PublicKey) => {
   const did = DidSolIdentifier.create(authority.publicKey, CLUSTER);
   const didSolService = DidSolService.build(did, { wallet: authority });
   const newKeyVerificationMethod: AddVerificationMethodParams = {
@@ -22,8 +22,13 @@ export const addKeyToDID = async (authority: Wallet, key: PublicKey) => {
     methodType: VerificationMethodType.Ed25519VerificationKey2018,
   };
 
-  await didSolService.addVerificationMethod(newKeyVerificationMethod).rpc(); //{ skipPreflight: true, commitment: 'finalized' });
+  return didSolService
+    .withAutomaticAlloc(authority.publicKey)
+    .addVerificationMethod(newKeyVerificationMethod);
 };
+
+export const addKeyToDID = async (authority: Wallet, key: PublicKey) =>
+  addKeyToDIDExecution(authority, key).rpc();
 
 export const addControllerToDID = async (
   authority: Wallet,
