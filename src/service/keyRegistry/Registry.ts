@@ -9,15 +9,20 @@ import { Execution, Wallet } from "../../types";
 import { makeProgram } from "../../lib/util";
 
 export class Registry extends AbstractKeyRegistry {
+  // Pays for registry updates (defaults to the authority)
+  protected payer: PublicKey;
+
   protected constructor(
     protected wallet: Wallet,
     connection: Connection,
     address: Uint8Array,
     seedPrefix: string,
-    cluster: ExtendedCluster
+    cluster: ExtendedCluster,
+    payer?: PublicKey
   ) {
     super(address, seedPrefix, cluster);
     this.program = makeProgram(connection, wallet);
+    this.payer = payer || wallet.publicKey;
   }
 
   protected async initInstructionIfNeeded(): Promise<TransactionInstruction | null> {
@@ -32,6 +37,7 @@ export class Registry extends AbstractKeyRegistry {
       .createKeyRegistry(this.registryBump)
       .accounts({
         registry: this.registryAddress,
+        payer: this.payer,
         authority: this.wallet.publicKey,
       })
       .instruction();
@@ -50,6 +56,7 @@ export class Registry extends AbstractKeyRegistry {
       .accounts({
         registry: this.registryAddress,
         authority: this.wallet.publicKey,
+        payer: this.payer,
       })
       .instruction();
   }
@@ -92,6 +99,7 @@ export class Registry extends AbstractKeyRegistry {
     return this.program.methods.resizeKeyRegistry(did_count).accounts({
       registry: this.registryAddress,
       authority: this.wallet.publicKey,
+      payer: this.payer,
     });
   }
 
@@ -99,20 +107,23 @@ export class Registry extends AbstractKeyRegistry {
     return this.program.methods.closeKeyRegistry().accounts({
       registry: this.registryAddress,
       authority: this.wallet.publicKey,
+      payer: this.payer,
     });
   }
 
   static for(
     wallet: Wallet,
     connection: Connection,
-    cluster: ExtendedCluster = "mainnet-beta"
+    cluster: ExtendedCluster = "mainnet-beta",
+    payer?: PublicKey
   ) {
     return new Registry(
       wallet,
       connection,
       wallet.publicKey.toBuffer(),
       KEY_REGISTRY_SEED_PREFIX,
-      cluster
+      cluster,
+      payer
     );
   }
 }

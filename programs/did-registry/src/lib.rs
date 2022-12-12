@@ -361,7 +361,25 @@ pub mod did_registry {
         Ok(())
     }
 
-    pub fn close_controller_registry(_ctx: Context<CloseControllerRegistry>) -> Result<()> {
+    pub fn close_controller_registry(
+        ctx: Context<CloseControllerRegistry>,
+        _did_bump: u8,
+    ) -> Result<()> {
+        // ensure the authority is an authority on the did account whose registry is being closed
+        // note, anchor has already verified the constraint that did_account
+        // is the account for the did.
+        is_authority(
+            &ctx.accounts.did_account.to_account_info(),
+            None,
+            &[], // the authority must be a direct authority on the DID
+            ctx.accounts.authority.key().as_ref(),
+            None,
+            None,
+        )
+        .map_err(|_| ErrorCode::DIDError)?
+        .then_some(())
+        .ok_or(ErrorCode::NotAuthority)?;
+
         Ok(())
     }
 }

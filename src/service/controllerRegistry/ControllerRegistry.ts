@@ -12,15 +12,20 @@ import {
 } from "./AbstractControllerRegistry";
 
 export class ControllerRegistry extends AbstractControllerRegistry {
+  // Pays for registry updates (defaults to the authority)
+  protected payer: PublicKey;
+
   protected constructor(
     protected wallet: Wallet,
     connection: Connection,
     address: Uint8Array,
     seedPrefix: string,
-    cluster: ExtendedCluster
+    cluster: ExtendedCluster,
+    payer?: PublicKey
   ) {
     super(address, seedPrefix, cluster);
     this.program = makeProgram(connection, wallet);
+    this.payer = payer || wallet.publicKey;
   }
 
   protected async initInstructionIfNeeded(): Promise<TransactionInstruction | null> {
@@ -33,18 +38,12 @@ export class ControllerRegistry extends AbstractControllerRegistry {
 
     const account = this.didAddressToAccount();
 
-    console.log({
-      registry: this.registryAddress.toBase58(),
-      authority: this.wallet.publicKey.toBase58(),
-      did: account.authority.toBase58(),
-      didAccount: account.account.toBase58(),
-    });
-
     return this.program.methods
       .createControllerRegistry(this.registryBump, account.bump)
       .accounts({
         registry: this.registryAddress,
         authority: this.wallet.publicKey,
+        payer: this.payer,
         did: account.authority,
         didAccount: account.account,
       })
@@ -63,6 +62,7 @@ export class ControllerRegistry extends AbstractControllerRegistry {
       .accounts({
         registry: this.registryAddress,
         authority: this.wallet.publicKey,
+        payer: this.payer,
       })
       .instruction();
   }
@@ -77,14 +77,6 @@ export class ControllerRegistry extends AbstractControllerRegistry {
 
     const controlledDidAccount = this.didToAccount(did);
     const didAccount = this.didAddressToAccount();
-
-    console.log({
-      registry: this.registryAddress.toBase58(),
-      authority: this.wallet.publicKey.toBase58(),
-      controlledDid: controlledDidAccount.authority.toBase58(),
-      controlledDidAccount: controlledDidAccount.account.toBase58(),
-      didAccount: didAccount.account.toBase58(),
-    });
 
     return this.program.methods
       .registerControlledDid(didAccount.bump, controlledDidAccount.bump)
@@ -117,13 +109,18 @@ export class ControllerRegistry extends AbstractControllerRegistry {
     return this.program.methods.resizeControllerRegistry(did_count).accounts({
       registry: this.registryAddress,
       authority: this.wallet.publicKey,
+      payer: this.payer,
     });
   }
 
   close(): Execution {
-    return this.program.methods.closeControllerRegistry().accounts({
+    const account = this.didAddressToAccount();
+    return this.program.methods.closeControllerRegistry(account.bump).accounts({
       registry: this.registryAddress,
       authority: this.wallet.publicKey,
+      payer: this.payer,
+      did: account.authority,
+      didAccount: account.account,
     });
   }
 

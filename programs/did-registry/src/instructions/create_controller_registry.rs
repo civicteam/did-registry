@@ -12,12 +12,14 @@ did_bump: u8,
 pub struct CreateControllerRegistry<'info> {
     #[account(
     init,
-    payer = authority,
+    payer = payer,
     space = 8 + ControllerRegistry::INITIAL_SIZE,
     seeds = [ControllerRegistry::SEED_PREFIX, did.key().as_ref()],
     bump,
     )]
     pub registry: Account<'info, ControllerRegistry>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
     #[account(mut)]
     pub authority: Signer<'info>,
     /// The DID to create the registry for. This is the did "identifier", not the did account
