@@ -1,24 +1,14 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
 import { Keypair } from "@solana/web3.js";
-import { Wallet as EthWallet } from "@ethersproject/wallet";
 import { ControllerRegistry, ReadOnlyControllerRegistry } from "../src";
 
 import { DidRegistry } from "../target/types/did_registry";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
-import {
-  addEthAddressToDID,
-  addKeyToDID,
-  createDIDAndAddController,
-  createDIDAndAddKey,
-  initializeDIDAccount,
-  toDid,
-} from "./util/did";
-import { createTestContext, fund } from "./util/anchorUtils";
+import { createDIDAndAddController, toDid } from "./util/did";
 import {
   DidSolIdentifier,
-  DidSolService,
   ExtendedCluster,
 } from "@identity.com/sol-did-client";
 import { times } from "./util/lang";
@@ -52,7 +42,8 @@ describe("Controller Registry", () => {
       .close()
       .rpc()
       .catch((error) => {
-        if (error.error.errorCode.code === "AccountNotInitialized") {
+        // anchor errors have this fun property structure...
+        if (error?.error?.errorCode?.code === "AccountNotInitialized") {
           // ignore - the test does not need the registry to be created
           return;
         }

@@ -14,6 +14,11 @@ export type DidRegistry = {
           "isSigner": false
         },
         {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -239,6 +244,11 @@ export type DidRegistry = {
           "isSigner": false
         },
         {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -265,6 +275,11 @@ export type DidRegistry = {
           "isSigner": false
         },
         {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -287,6 +302,11 @@ export type DidRegistry = {
           "name": "registry",
           "isMut": true,
           "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
         },
         {
           "name": "authority",
@@ -446,6 +466,11 @@ export type DidRegistry = {
           "isSigner": false
         },
         {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -472,9 +497,34 @@ export type DidRegistry = {
           "isSigner": false
         },
         {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "did",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The DID whose registry is being closed. This is the did \"identifier\", not the did account",
+            "i.e. did:sol:<identifier>",
+            "note - this may or may not be the same as the authority."
+          ]
+        },
+        {
+          "name": "didAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The account containing the DID document",
+            "Specifically, the did account is checked to see if it has the authority as a signer",
+            "Since it can be a generative DID, we do not use Account<DidAccount> here"
+          ]
         },
         {
           "name": "systemProgram",
@@ -482,7 +532,12 @@ export type DidRegistry = {
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "didBump",
+          "type": "u8"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -614,6 +669,11 @@ export const IDL: DidRegistry = {
           "isSigner": false
         },
         {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -839,6 +899,11 @@ export const IDL: DidRegistry = {
           "isSigner": false
         },
         {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -865,6 +930,11 @@ export const IDL: DidRegistry = {
           "isSigner": false
         },
         {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -887,6 +957,11 @@ export const IDL: DidRegistry = {
           "name": "registry",
           "isMut": true,
           "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
         },
         {
           "name": "authority",
@@ -1046,6 +1121,11 @@ export const IDL: DidRegistry = {
           "isSigner": false
         },
         {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
@@ -1072,9 +1152,34 @@ export const IDL: DidRegistry = {
           "isSigner": false
         },
         {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "authority",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "did",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The DID whose registry is being closed. This is the did \"identifier\", not the did account",
+            "i.e. did:sol:<identifier>",
+            "note - this may or may not be the same as the authority."
+          ]
+        },
+        {
+          "name": "didAccount",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The account containing the DID document",
+            "Specifically, the did account is checked to see if it has the authority as a signer",
+            "Since it can be a generative DID, we do not use Account<DidAccount> here"
+          ]
         },
         {
           "name": "systemProgram",
@@ -1082,7 +1187,12 @@ export const IDL: DidRegistry = {
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "didBump",
+          "type": "u8"
+        }
+      ]
     }
   ],
   "accounts": [

@@ -9,12 +9,13 @@ pub struct ResizeControllerRegistry<'info> {
     seeds = [ControllerRegistry::SEED_PREFIX, authority.key().as_ref()],
     bump,
     realloc = TryInto::<usize>::try_into(ControllerRegistry::calculate_size(did_count)).unwrap(),
-    realloc::payer = authority,
+    realloc::payer = payer,
     realloc::zero = false,
-    // has_one = authority // TODO
     )]
     pub registry: Account<'info, ControllerRegistry>,
     #[account(mut)]
-    pub authority: Signer<'info>, // TODO prove ownership of did using did_sol
+    pub payer: Signer<'info>,
+    #[account(mut)]
+    pub authority: Signer<'info>, // ownership is proven in the program
     pub system_program: Program<'info, System>,
 }

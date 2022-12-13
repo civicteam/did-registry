@@ -17,5 +17,5 @@ default = []
 
 [dependencies]
 anchor-lang = { version = "0.25.0", features = ["init-if-needed"] }
-sol-did = { git = "https://github.com/identity-com/sol-did", rev = "642b2c45d6f2ece1668f44e715caece4d2b712d8", features = ["no-entrypoint"] }
+sol-did = { git = "https://github.com/identity-com/sol-did", branch = "feature/IDCOM-2102_controller_fixes", features = ["no-entrypoint"] }
 itertools = "0.10.3"

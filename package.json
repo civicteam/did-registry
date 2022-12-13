@@ -1,6 +1,6 @@
 {
     "name": "@civic/did-registry",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "description": "An on-chain protocol to provide reverse-lookup on did:sol key membership",
     "author": "Daniel Kelleher <daniel@civic.com>",
     "main": "dist/index.js",

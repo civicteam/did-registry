@@ -1,5 +1,5 @@
 import * as anchor from "@project-serum/anchor";
-import { Program } from "@project-serum/anchor";
+import { Program, Provider } from "@project-serum/anchor";
 import { Keypair, Transaction } from "@solana/web3.js";
 import { Wallet as EthWallet } from "@ethersproject/wallet";
 import { EthRegistry, ReadOnlyRegistry, Registry } from "../src";
@@ -15,7 +15,7 @@ import {
   initializeDIDAccount,
   toDid,
 } from "./util/did";
-import { createTestContext, fund } from "./util/anchorUtils";
+import { createTestContext, fund, Wallet } from "./util/anchorUtils";
 import { ExtendedCluster } from "@identity.com/sol-did-client";
 import { times } from "./util/lang";
 
@@ -32,15 +32,12 @@ describe("Key Registry", () => {
 
   const program = anchor.workspace.DidRegistry as Program<DidRegistry>;
 
-  const registry = Registry.for(
-    provider.wallet,
-    program.provider.connection,
-    cluster
-  );
+  const registry = Registry.for(provider.wallet, provider.connection, cluster);
+
   const ethRegistry = EthRegistry.forEthAddress(
     ethWallet.address,
     provider.wallet,
-    program.provider.connection,
+    provider.connection,
     cluster
   );
 
@@ -50,7 +47,8 @@ describe("Key Registry", () => {
       .close()
       .rpc()
       .catch((error) => {
-        if (error.error.errorCode.code === "AccountNotInitialized") {
+        // anchor errors have this fun property structure...
+        if (error?.error?.errorCode?.code === "AccountNotInitialized") {
           // ignore - the test does not need the registry to be created
           return;
         }
@@ -63,7 +61,7 @@ describe("Key Registry", () => {
     expect(
       await ReadOnlyRegistry.for(
         provider.wallet.publicKey,
-        program.provider.connection,
+        provider.connection,
         cluster
       ).listDIDs()
     ).to.be.empty;
@@ -73,7 +71,7 @@ describe("Key Registry", () => {
     expect(
       await ReadOnlyRegistry.forEthAddress(
         ethWallet.address,
-        program.provider.connection,
+        provider.connection,
         cluster
       ).listDIDs()
     ).to.be.empty;
@@ -211,6 +209,35 @@ describe("Key Registry", () => {
     expect(registeredDids).not.to.include(secondAuthorityDid);
   });
 
+  it("can remove and re-add a DID", async () => {
+    const { authority: secondAuthority } = createTestContext();
+    await fund(secondAuthority.publicKey);
+    const secondAuthorityDid = await initializeDIDAccount(secondAuthority);
+    await addKeyToDID(secondAuthority, program.provider.publicKey);
+
+    await registry
+      .register(secondAuthorityDid)
+      .then((execution) => execution.rpc());
+
+    // the did is registered
+    let registeredDids = await registry.listDIDs();
+    expect(registeredDids).to.include(secondAuthorityDid);
+
+    await registry.remove(secondAuthorityDid).rpc();
+
+    // the did is no longer registered
+    registeredDids = await registry.listDIDs();
+    expect(registeredDids).not.to.include(secondAuthorityDid);
+
+    await registry
+      .register(secondAuthorityDid)
+      .then((execution) => execution.rpc());
+
+    // the did is registered again
+    registeredDids = await registry.listDIDs();
+    expect(registeredDids).to.include(secondAuthorityDid);
+  });
+
   it("cannot remove a DID that was not registered", async () => {
     // set up the registry
     const did = toDid(provider.wallet.publicKey);
@@ -300,5 +327,110 @@ describe("Key Registry", () => {
     // check all dids are present
     const registeredDids = await registry.listDIDs();
     expect(registeredDids).to.deep.equal(fiveDids);
+  });
+
+  context("with a separate payer", () => {
+    let payerKeypair: Keypair;
+    let payerProvider: Provider;
+    let registryWithSeparatePayer: Registry;
+    let payerAuthority: Wallet;
+
+    // create (and fund) a new payer each time
+    beforeEach("create payer", async () => {
+      ({
+        keypair: payerKeypair,
+        authority: payerAuthority,
+        provider: payerProvider,
+      } = createTestContext());
+      registryWithSeparatePayer = Registry.for(
+        provider.wallet,
+        provider.connection,
+        cluster,
+        payerKeypair.publicKey
+      );
+      await fund(payerKeypair.publicKey, 10_000_000);
+    });
+
+    it("can register a generative DID", async () => {
+      const did = toDid(provider.wallet.publicKey);
+      const tx = await registryWithSeparatePayer
+        .register(did)
+        .then((execution) => execution.transaction());
+
+      const authorityPrebalance = await provider.connection.getBalance(
+        provider.wallet.publicKey
+      );
+
+      // setting the fee payer and recentBlockhash so that the authority's wallet can sign
+      tx.feePayer = payerKeypair.publicKey;
+      const blockhash = await payerProvider.connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash.blockhash;
+
+      const partiallySignedTx = await provider.wallet.signTransaction(tx);
+
+      // use the payerProvider to send to ensure the fee payer is the rent payer
+
+      // this fails because the provider is putting another recentBlockhash on the tx, and resigning.
+      // await payerProvider.sendAndConfirm(partiallySignedTx, [], { commitment: 'confirmed' });
+
+      const fullySignedTx = await payerAuthority.signTransaction(
+        partiallySignedTx
+      );
+      const txSig = await provider.connection.sendRawTransaction(
+        fullySignedTx.serialize()
+      );
+      await provider.connection.confirmTransaction({
+        signature: txSig,
+        ...blockhash,
+      });
+
+      const authorityPostbalance = await provider.connection.getBalance(
+        provider.wallet.publicKey
+      );
+
+      const registeredDids = await registryWithSeparatePayer.listDIDs();
+
+      expect(registeredDids).to.include(did);
+
+      // the authority did not pay for rent or network fee
+      expect(authorityPrebalance).to.equal(authorityPostbalance);
+    });
+
+    it("can resize a DID registry", async () => {
+      const did = toDid(provider.wallet.publicKey);
+
+      // set up the registry
+      const setupTx = await registryWithSeparatePayer
+        .register(did)
+        .then((execution) => execution.transaction());
+      await provider.sendAndConfirm(setupTx, [payerKeypair]);
+
+      console.log({
+        payer: payerKeypair.publicKey.toBase58(),
+        authority: provider.wallet.publicKey.toBase58(),
+      });
+
+      // resize it
+      const resizeTx = await registryWithSeparatePayer.resize(10).transaction();
+      await provider.sendAndConfirm(resizeTx, [payerKeypair]);
+
+      // we are happy as long as the tx passes
+    });
+
+    it("can close a DID registry", async () => {
+      const did = toDid(provider.wallet.publicKey);
+
+      // set up the registry
+      const setupTx = await registryWithSeparatePayer
+        .register(did)
+        .then((execution) => execution.transaction());
+      await provider.sendAndConfirm(setupTx, [payerKeypair]);
+
+      // close it
+      const closeTx = await registryWithSeparatePayer.close().transaction();
+      await provider.sendAndConfirm(closeTx, [payerKeypair]);
+
+      // we are happy as long as the tx passes
+    });
   });
 });
