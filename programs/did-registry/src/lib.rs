@@ -30,13 +30,13 @@ pub mod did_registry {
     }
 
     /// Add a DID to an authority's registry
-    pub fn register_did(ctx: Context<RegisterDid>, did_bump: u8) -> Result<()> {
+    pub fn register_did(ctx: Context<RegisterDid>, _did_bump: u8) -> Result<()> {
         // ensure the authority is an authority on the did account
         // note, anchor has already verified the constraint that did_account
         // is the account for the did.
         is_authority(
             &ctx.accounts.did_account.to_account_info(),
-            Some(did_bump),
+            None,
             &[], // the authority must be a direct authority on the DID
             ctx.accounts.authority.key().as_ref(),
             None,
@@ -90,12 +90,12 @@ pub mod did_registry {
     pub fn register_did_for_eth_address(
         ctx: Context<RegisterDidForEthAddress>,
         eth_address: [u8; 20],
-        did_bump: u8,
+        _did_bump: u8,
     ) -> Result<()> {
         // ensure the eth address is an authority on the DID
         is_authority(
             &ctx.accounts.did_account.to_account_info(),
-            Some(did_bump),
+            None,
             &[], // the authority must be a direct authority on the DID
             eth_address.as_ref(),
             None,
@@ -137,7 +137,7 @@ pub mod did_registry {
         ctx: Context<RegisterDidSignedByEthAddress>,
         eth_address: [u8; 20],
         eth_signature: Secp256k1RawSignature,
-        did_bump: u8,
+        _did_bump: u8,
     ) -> Result<()> {
         // Check the eth signature is a signature of the DID identifier as a byte array
         // and that it was signed by the eth address
@@ -154,7 +154,7 @@ pub mod did_registry {
         // is the account for the did.
         is_authority(
             &ctx.accounts.did_account.to_account_info(),
-            Some(did_bump),
+            None,
             &[], // the authority must be a direct authority on the DID
             eth_address.as_ref(),
             None,
@@ -194,8 +194,8 @@ pub mod did_registry {
     /// Create an empty controller registry for a given DID
     pub fn create_controller_registry(
         ctx: Context<CreateControllerRegistry>,
-        _bump: u8,    // the registry PDA bump
-        did_bump: u8, // the DID account PDA bump
+        _bump: u8,     // the registry PDA bump
+        _did_bump: u8, // the DID account PDA bump
     ) -> Result<()> {
         ctx.accounts.registry.did = ctx.accounts.did.key();
 
@@ -206,7 +206,7 @@ pub mod did_registry {
         // but to prevent any future exploits, we lock it down here to a DID authority.
         is_authority(
             &ctx.accounts.did_account.to_account_info(),
-            Some(did_bump), // the authority must be a direct authority on the DID
+            None, // the authority must be a direct authority on the DID
             &[],
             ctx.accounts.authority.key().as_ref(),
             None,
@@ -222,7 +222,7 @@ pub mod did_registry {
     /// Add a controlled DID to an authority's controller registry
     pub fn register_controlled_did(
         ctx: Context<RegisterControlledDid>,
-        did_bump: u8,
+        _did_bump: u8,
         _controlled_did_bump: u8,
     ) -> Result<()> {
         msg!(
@@ -237,7 +237,7 @@ pub mod did_registry {
         // is the account for the registry's did.
         is_authority(
             &ctx.accounts.did_account.to_account_info(),
-            Some(did_bump),
+            None,
             &[], // the authority must be a direct authority on the DID
             ctx.accounts.authority.key().as_ref(),
             None,
@@ -308,7 +308,7 @@ pub mod did_registry {
     }
 
     /// Remove a controlled DID from a controller registry
-    pub fn remove_controlled_did(ctx: Context<RemoveControlledDid>, did_bump: u8) -> Result<()> {
+    pub fn remove_controlled_did(ctx: Context<RemoveControlledDid>, _did_bump: u8) -> Result<()> {
         let did_to_remove = &ctx.accounts.did_to_remove.key();
 
         // ensure the authority is an authority on the did account that the registry is being created for
@@ -318,7 +318,7 @@ pub mod did_registry {
         // but to prevent any future exploits, we lock it down here to a DID authority.
         is_authority(
             &ctx.accounts.did_account.to_account_info(),
-            Some(did_bump), // the authority must be a direct authority on the DID
+            None, // the authority must be a direct authority on the DID
             &[],
             ctx.accounts.authority.key().as_ref(),
             None,
@@ -358,14 +358,14 @@ pub mod did_registry {
 
     pub fn close_controller_registry(
         ctx: Context<CloseControllerRegistry>,
-        did_bump: u8,
+        _did_bump: u8,
     ) -> Result<()> {
         // ensure the authority is an authority on the did account whose registry is being closed
         // note, anchor has already verified the constraint that did_account
         // is the account for the did.
         is_authority(
             &ctx.accounts.did_account.to_account_info(),
-            Some(did_bump),
+            None,
             &[], // the authority must be a direct authority on the DID
             ctx.accounts.authority.key().as_ref(),
             None,
